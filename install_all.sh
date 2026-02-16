@@ -14,7 +14,6 @@ if [ "$1" = "--check-only" ]; then
   CHECK_ONLY=true
 fi
 
-# Color output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -25,32 +24,52 @@ log_ok()      { echo -e "${GREEN}  ✓ $1${NC}"; }
 log_warn()    { echo -e "${YELLOW}  ⚠ $1${NC}"; }
 log_err()     { echo -e "${RED}  ✗ $1${NC}"; }
 
-# Scripts listed with their paths relative to repo root
+# Each entry is "subdirectory|script_name"
+# install_all.sh cds into the subdirectory before running so SCRIPT_DIR
+# inside each sub-script resolves to its own directory correctly.
+# Use ".|script_name" for scripts that live at repo root.
 SCRIPTS=(
-  "fw-replacements/install_fw_replacements.sh"
-  "extensions/install_extensions.sh"
-  "extensions/install_failure_tracker.sh"
-  "prompt-patches/install_prompt_patches.sh"
-  "install_skills.sh"
+  "fw-replacements|install_fw_replacements.sh"
+  "extensions|install_extensions.sh"
+  "extensions|install_failure_tracker.sh"
+  "prompt-patches|install_prompt_patches.sh"
+  ".|install_skills.sh"
 )
 
 CHECK_SCRIPTS=(
-  "fw-replacements/check_fw_upstream.sh"
-  "extensions/check_extensions_upstream.sh"
-  "prompt-patches/check_prompt_patches_upstream.sh"
-  "check_skills_upstream.sh"
+  "fw-replacements|check_fw_upstream.sh"
+  "extensions|check_extensions_upstream.sh"
+  "prompt-patches|check_prompt_patches_upstream.sh"
+  ".|check_skills_upstream.sh"
 )
+
+run_script() {
+  local subdir="$1"
+  local script="$2"
+  local target_dir
+
+  if [ "$subdir" = "." ]; then
+    target_dir="$SCRIPT_DIR"
+  else
+    target_dir="$SCRIPT_DIR/$subdir"
+  fi
+
+  if [ ! -f "$target_dir/$script" ]; then
+    log_warn "Not found (skipping): $subdir/$script"
+    return 0
+  fi
+
+  (cd "$target_dir" && bash "$script")
+}
 
 if [ "$CHECK_ONLY" = true ]; then
   log_section "Checking for upstream changes"
 
-  for script in "${CHECK_SCRIPTS[@]}"; do
-    if [ -f "$SCRIPT_DIR/$script" ]; then
-      log_section "$script"
-      bash "$SCRIPT_DIR/$script"
-    else
-      log_warn "Not found: $script"
-    fi
+  for entry in "${CHECK_SCRIPTS[@]}"; do
+    subdir="${entry%%|*}"
+    script="${entry##*|}"
+    log_section "$subdir/$script"
+    run_script "$subdir" "$script"
   done
 
   echo ""
@@ -65,17 +84,15 @@ echo ""
 
 failed=0
 
-for script in "${SCRIPTS[@]}"; do
-  if [ -f "$SCRIPT_DIR/$script" ]; then
-    log_section "$script"
-    if bash "$SCRIPT_DIR/$script"; then
-      log_ok "$script completed"
-    else
-      log_err "$script failed"
-      failed=$((failed + 1))
-    fi
+for entry in "${SCRIPTS[@]}"; do
+  subdir="${entry%%|*}"
+  script="${entry##*|}"
+  log_section "$subdir/$script"
+  if run_script "$subdir" "$script"; then
+    log_ok "$script completed"
   else
-    log_warn "Not found (skipping): $script"
+    log_err "$script failed"
+    failed=$((failed + 1))
   fi
 done
 
