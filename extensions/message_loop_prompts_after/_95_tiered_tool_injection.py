@@ -127,17 +127,18 @@ class TieredToolInjection(Extension):
             compact_menu,
         ]
 
-        if active_tool and active_tool in full_specs:
+        # Always inject response tool in full — model must always know how to
+        # terminate a task regardless of what the active tool is
+        response_spec = full_specs.get("response", "")
+        if response_spec:
+            replacement_parts.append(
+                f"\n---\n**response tool — always available:**\n{response_spec}"
+            )
+
+        # Also inject full spec for the active tool if it isn't response
+        if active_tool and active_tool in full_specs and active_tool != "response":
             replacement_parts.append(
                 f"\n---\n**Active tool — full spec:**\n{full_specs[active_tool]}"
             )
-        else:
-            # First iteration or unknown tool — inject response tool in full
-            # so the model always knows how to terminate a task
-            response_spec = full_specs.get("response", "")
-            if response_spec:
-                replacement_parts.append(
-                    f"\n---\n**response tool — full spec:**\n{response_spec}"
-                )
 
         loop_data.system[tools_idx] = "\n".join(replacement_parts)
