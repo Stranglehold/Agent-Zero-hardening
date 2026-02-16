@@ -11,6 +11,7 @@ BACKUP_ROOT="$TARGET_ROOT/.hardening_originals"
 EXT_POINTS=(
   "error_format"
   "before_main_llm_call"
+  "message_loop_prompts_after"
 )
 
 if [ ! -d "$BACKUP_ROOT" ]; then

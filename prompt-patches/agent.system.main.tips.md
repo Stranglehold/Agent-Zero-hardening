@@ -32,3 +32,12 @@ When creating or modifying skills, all actions are scoped to the skill directory
 Never run pip install -r /a0/requirements.txt — that is the framework dependency file, not a skill dependency.
 Never install agent-zero framework packages as part of skill work.
 Skill creation requires only: code_execution_tool to create the directory and SKILL.md file.
+
+## code_execution_tool schema
+code_execution_tool requires TWO arguments: runtime AND code. Both are mandatory.
+Correct call format:
+{"tool_name": "code_execution_tool", "tool_args": {"runtime": "python", "code": "print('hello')"}}
+{"tool_name": "code_execution_tool", "tool_args": {"runtime": "terminal", "code": "ls /a0/skills/"}}
+{"tool_name": "code_execution_tool", "tool_args": {"runtime": "nodejs", "code": "console.log('hello')"}}
+NEVER call code_execution_tool without both runtime and code fields present.
+NEVER use argument names other than "runtime" and "code" — no "script", "command", "python", "cmd".

@@ -14,6 +14,11 @@ TOOL_HEADING_RE = re.compile(r'^###\s+(\w+)', re.MULTILINE)
 # Cache key for tool registry stored on agent between iterations
 REGISTRY_CACHE_KEY = "_tiered_tools_registry"
 
+# Tools always injected with full spec regardless of active tool
+# response: model must always know how to terminate
+# code_execution_tool: primary execution tool, schema errors are fatal
+ALWAYS_FULL_SPEC = {"response", "code_execution_tool"}
+
 
 def _build_tool_registry(agent) -> tuple[str, dict[str, str]]:
     """
@@ -119,24 +124,24 @@ class TieredToolInjection(Extension):
         active_tool = _extract_tool_name(loop_data.last_response)
 
         # Build replacement block
-        # Always inject: compact menu header + one-liner per tool
-        # Conditionally inject: full spec for active tool only
+        # Always inject: compact menu + full specs for ALWAYS_FULL_SPEC tools
+        # Conditionally inject: full spec for active tool if not already included
         replacement_parts = [
             TOOLS_BLOCK_MARKER,
             "Select a tool from the list below. Full usage details follow for your current tool.\n",
             compact_menu,
         ]
 
-        # Always inject response tool in full — model must always know how to
-        # terminate a task regardless of what the active tool is
-        response_spec = full_specs.get("response", "")
-        if response_spec:
-            replacement_parts.append(
-                f"\n---\n**response tool — always available:**\n{response_spec}"
-            )
+        # Always inject full spec for pinned tools
+        for tool_name in sorted(ALWAYS_FULL_SPEC):
+            spec = full_specs.get(tool_name, "")
+            if spec:
+                replacement_parts.append(
+                    f"\n---\n**{tool_name} — always available (full spec):**\n{spec}"
+                )
 
-        # Also inject full spec for the active tool if it isn't response
-        if active_tool and active_tool in full_specs and active_tool != "response":
+        # Also inject full spec for the active tool if not already pinned
+        if active_tool and active_tool in full_specs and active_tool not in ALWAYS_FULL_SPEC:
             replacement_parts.append(
                 f"\n---\n**Active tool — full spec:**\n{full_specs[active_tool]}"
             )

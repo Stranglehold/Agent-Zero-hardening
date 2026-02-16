@@ -1,7 +1,7 @@
 ---
 name: "create-skill"
 description: "Wizard for creating new Agent Zero skills. Guides users through creating well-structured SKILL.md files. Use when users want to create custom skills."
-version: "2.0.0"
+version: "2.1.0"
 author: "Agent Zero Team"
 tags: ["meta", "wizard", "creation", "tutorial", "skills"]
 trigger_patterns:
@@ -82,41 +82,46 @@ trigger_patterns:
 ```
 
 ### Step 3 — Create the skill directory and file
-Use code_execution_tool to run:
 
-```python
-import os
+Use code_execution_tool with runtime=python and code argument. Both fields are required.
 
-skill_name = "{skill-name}"
-skill_dir = f"/a0/skills/{skill_name}"
-skill_md_path = f"{skill_dir}/SKILL.md"
-
-os.makedirs(skill_dir, exist_ok=True)
-
-content = """{full SKILL.md content from Step 2}"""
-
-with open(skill_md_path, "w") as f:
-    f.write(content)
-
-print(f"Created: {skill_md_path}")
-```
-
-### Step 4 — Verify and load
-After creating the file, verify it was written:
-
-```python
-import os
-print(os.path.exists(skill_md_path))
-with open(skill_md_path) as f:
-    print(f.read()[:200])
-```
-
-Then load the skill using skills_tool (JSON tool call, NOT terminal command):
 ```json
-{"tool_name": "skills_tool", "tool_args": {"method": "load", "skill_name": "{skill-name}"}}
+{
+  "tool_name": "code_execution_tool",
+  "tool_args": {
+    "runtime": "python",
+    "code": "import os\nskill_name = '{skill-name}'\nskill_dir = f'/a0/skills/{skill_name}'\nos.makedirs(skill_dir, exist_ok=True)\ncontent = '''{full SKILL.md content}'''\nwith open(f'{skill_dir}/SKILL.md', 'w') as f:\n    f.write(content)\nprint(f'Created: {skill_dir}/SKILL.md')"
+  }
+}
 ```
 
-### Step 5 — Report to user
+CRITICAL: tool_args must contain exactly "runtime" and "code". Never use "script", "command", "cmd", or any other key name.
+
+### Step 4 — Verify the file was written
+
+```json
+{
+  "tool_name": "code_execution_tool",
+  "tool_args": {
+    "runtime": "terminal",
+    "code": "cat /a0/skills/{skill-name}/SKILL.md | head -20"
+  }
+}
+```
+
+### Step 5 — Load the skill
+
+```json
+{
+  "tool_name": "skills_tool",
+  "tool_args": {
+    "method": "load",
+    "skill_name": "{skill-name}"
+  }
+}
+```
+
+### Step 6 — Report to user
 Confirm:
 - Skill name and location
 - Trigger patterns (phrases that will activate it)
