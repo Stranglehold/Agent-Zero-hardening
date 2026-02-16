@@ -10,6 +10,7 @@ FILES=(
   "agent.system.main.solving.md"
   "agent.system.main.tips.md"
   "agent.system.tool.response.md"
+  "agent.system.tool.skills.md"
 )
 
 if [ ! -d "$BACKUP_DIR" ]; then

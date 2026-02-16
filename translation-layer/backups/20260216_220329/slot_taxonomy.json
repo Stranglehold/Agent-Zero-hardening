@@ -1,0 +1,419 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "description": "Agent-Zero intent disambiguation taxonomy. Add domains freely — no code changes required.",
+    "resolver_types": [
+      "keyword_map",
+      "file_extension_inference",
+      "last_mentioned_file",
+      "last_mentioned_path",
+      "last_mentioned_entity",
+      "context_inference",
+      "history_scan"
+    ]
+  },
+
+  "domains": {
+
+    "codegen": {
+      "description": "Writing, creating, or generating new code",
+      "triggers": [
+        "write", "create", "generate", "build", "implement", "scaffold",
+        "make a", "make me", "produce", "draft", "code", "function",
+        "class", "script", "module", "program"
+      ],
+      "required_slots": ["target_file", "operation"],
+      "optional_slots": ["language", "preserve_behavior", "style", "scope", "return_type"],
+      "slot_definitions": {
+        "target_file": {
+          "question": "Which file should I write to, or should I create a new one?",
+          "resolvers": ["last_mentioned_file", "context_inference"],
+          "type": "string",
+          "nullable": true,
+          "null_means": "create_new"
+        },
+        "operation": {
+          "question": null,
+          "resolvers": ["keyword_map"],
+          "keyword_map": {
+            "write": "create", "create": "create", "generate": "create",
+            "build": "create", "implement": "create", "scaffold": "create",
+            "add": "extend", "extend": "extend", "append": "extend",
+            "rewrite": "rewrite", "replace": "rewrite", "redo": "rewrite"
+          },
+          "type": "enum",
+          "default": "create"
+        },
+        "language": {
+          "question": null,
+          "resolvers": ["file_extension_inference", "context_inference", "history_scan"],
+          "type": "string",
+          "nullable": true
+        },
+        "preserve_behavior": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "bool",
+          "default": true
+        },
+        "scope": {
+          "question": "Should this apply to the whole file or a specific function/section?",
+          "resolvers": ["context_inference"],
+          "type": "string",
+          "nullable": true
+        }
+      },
+      "confidence_threshold": 0.65,
+      "preamble": "Identify the language. State exactly what needs to be written. Produce complete, runnable code only — no placeholders.",
+      "dialogue_acts": {
+        "INFORM": "User provided code or spec",
+        "REQUEST_CODE": "User wants code generated",
+        "CLARIFY_SCOPE": "Scope of change is unclear"
+      }
+    },
+
+    "refactor": {
+      "description": "Improving existing code without changing behavior",
+      "triggers": [
+        "refactor", "clean up", "clean", "tidy", "simplify", "optimize",
+        "improve", "fix style", "reorganize", "restructure", "lint",
+        "make it better", "make this better", "make cleaner"
+      ],
+      "required_slots": ["target_file", "operation"],
+      "optional_slots": ["preserve_behavior", "style_guide", "scope"],
+      "slot_definitions": {
+        "target_file": {
+          "question": "Which file should I refactor?",
+          "resolvers": ["last_mentioned_file", "context_inference"],
+          "type": "string",
+          "nullable": false
+        },
+        "operation": {
+          "question": null,
+          "resolvers": ["keyword_map"],
+          "keyword_map": {
+            "refactor": "refactor", "clean": "refactor", "clean up": "refactor",
+            "tidy": "refactor", "simplify": "simplify", "optimize": "optimize",
+            "improve": "refactor", "reorganize": "reorganize"
+          },
+          "type": "enum",
+          "default": "refactor"
+        },
+        "preserve_behavior": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "bool",
+          "default": true
+        },
+        "scope": {
+          "question": "Should this apply to the whole file or a specific function?",
+          "resolvers": ["context_inference"],
+          "type": "string",
+          "nullable": true
+        }
+      },
+      "confidence_threshold": 0.7,
+      "preamble": "Preserve all existing behavior exactly. List only the specific changes made. Show the complete modified code."
+    },
+
+    "bugfix": {
+      "description": "Diagnosing and fixing broken code",
+      "triggers": [
+        "fix", "debug", "broken", "error", "bug", "crash", "exception",
+        "not working", "doesn't work", "fails", "failing", "wrong output",
+        "traceback", "syntax error", "runtime error", "it broke"
+      ],
+      "required_slots": ["target_file", "error_description"],
+      "optional_slots": ["error_text", "expected_behavior", "scope"],
+      "slot_definitions": {
+        "target_file": {
+          "question": "Which file contains the bug?",
+          "resolvers": ["last_mentioned_file", "context_inference"],
+          "type": "string",
+          "nullable": false
+        },
+        "error_description": {
+          "question": "What is the error or wrong behavior you are seeing?",
+          "resolvers": ["context_inference", "history_scan"],
+          "type": "string",
+          "nullable": false
+        },
+        "error_text": {
+          "question": null,
+          "resolvers": ["history_scan"],
+          "type": "string",
+          "nullable": true,
+          "note": "Scan recent history for traceback or error message"
+        },
+        "expected_behavior": {
+          "question": "What should it do instead?",
+          "resolvers": ["context_inference"],
+          "type": "string",
+          "nullable": true
+        }
+      },
+      "confidence_threshold": 0.7,
+      "preamble": "Identify the root cause first. Explain it in one sentence. Then provide the complete fixed code."
+    },
+
+    "agentic": {
+      "description": "Executing a multi-step task or workflow via tools",
+      "triggers": [
+        "run", "execute", "do", "perform", "handle", "manage", "automate",
+        "set up", "deploy", "install", "configure", "process", "start",
+        "launch", "spin up", "take care of"
+      ],
+      "required_slots": ["target", "operation"],
+      "optional_slots": ["constraints", "scope", "output_format", "confirmation_required"],
+      "slot_definitions": {
+        "target": {
+          "question": "What should I operate on — a file, a directory, a service, or something else?",
+          "resolvers": ["last_mentioned_path", "last_mentioned_entity", "context_inference"],
+          "type": "string",
+          "nullable": false
+        },
+        "operation": {
+          "question": "What specifically should be done?",
+          "resolvers": ["keyword_map", "context_inference"],
+          "keyword_map": {
+            "run": "execute", "execute": "execute", "start": "start",
+            "install": "install", "deploy": "deploy", "configure": "configure",
+            "set up": "configure", "process": "process", "manage": "manage"
+          },
+          "type": "string",
+          "nullable": false
+        },
+        "constraints": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "string",
+          "nullable": true
+        },
+        "confirmation_required": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "bool",
+          "default": false,
+          "note": "Set true for destructive operations"
+        }
+      },
+      "confidence_threshold": 0.75,
+      "preamble": "Select one tool. State your reasoning in one sentence. Output valid JSON only. Do not chain tools without confirming intermediate results."
+    },
+
+    "file_ops": {
+      "description": "File and directory manipulation: move, copy, delete, rename, search",
+      "triggers": [
+        "move", "copy", "delete", "remove", "rename", "find", "search",
+        "read", "open", "list", "show files", "what files", "where is",
+        "locate", "scan", "grep"
+      ],
+      "required_slots": ["source_path", "operation"],
+      "optional_slots": ["destination_path", "conflict_resolution", "filter", "recursive"],
+      "slot_definitions": {
+        "source_path": {
+          "question": "What is the source path or file you want me to work with?",
+          "resolvers": ["last_mentioned_path", "last_mentioned_file", "context_inference"],
+          "type": "path",
+          "nullable": false
+        },
+        "operation": {
+          "question": null,
+          "resolvers": ["keyword_map"],
+          "keyword_map": {
+            "move": "move", "copy": "copy", "delete": "delete",
+            "remove": "delete", "rename": "rename", "find": "search",
+            "search": "search", "locate": "search", "grep": "search",
+            "read": "read", "open": "read", "list": "list", "scan": "list"
+          },
+          "type": "enum",
+          "nullable": false
+        },
+        "destination_path": {
+          "question": "Where should it go?",
+          "resolvers": ["context_inference"],
+          "type": "path",
+          "nullable": true,
+          "required_when": {"operation": ["move", "copy", "rename"]}
+        },
+        "conflict_resolution": {
+          "question": "If a file already exists at the destination, should I overwrite, skip, or rename it?",
+          "resolvers": ["context_inference"],
+          "type": "enum",
+          "enum_values": ["overwrite", "skip", "rename_new"],
+          "nullable": true,
+          "required_when": {"operation": ["move", "copy"]}
+        },
+        "recursive": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "bool",
+          "default": false
+        }
+      },
+      "confidence_threshold": 0.8,
+      "preamble": "Confirm the exact source and destination paths before executing. For destructive operations, state what will be lost."
+    },
+
+    "analysis": {
+      "description": "Explaining, comparing, reviewing, or assessing something",
+      "triggers": [
+        "analyze", "explain", "describe", "compare", "review", "assess",
+        "evaluate", "summarize", "what does", "what is", "how does",
+        "why is", "tell me about", "break down", "walk me through",
+        "understand", "look at"
+      ],
+      "required_slots": ["subject"],
+      "optional_slots": ["depth", "output_format", "comparison_target", "focus_area"],
+      "slot_definitions": {
+        "subject": {
+          "question": "What specifically should I analyze?",
+          "resolvers": ["context_inference", "last_mentioned_entity", "last_mentioned_file"],
+          "type": "string",
+          "nullable": false
+        },
+        "depth": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "enum",
+          "enum_values": ["brief", "standard", "deep"],
+          "default": "standard"
+        },
+        "comparison_target": {
+          "question": "What should I compare it against?",
+          "resolvers": ["context_inference"],
+          "type": "string",
+          "nullable": true,
+          "required_when": {"trigger_contains": ["compare", "vs", "versus", "difference"]}
+        },
+        "focus_area": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "string",
+          "nullable": true
+        }
+      },
+      "confidence_threshold": 0.6,
+      "preamble": "Break the subject into sub-components. Address each explicitly before synthesizing a conclusion."
+    },
+
+    "osint": {
+      "description": "Research, data gathering, site analysis, document investigation",
+      "triggers": [
+        "research", "investigate", "look up", "find information", "gather",
+        "scrape", "crawl", "fetch", "retrieve", "monitor", "track",
+        "osint", "scan site", "analyze site", "check"
+      ],
+      "required_slots": ["target", "information_type"],
+      "optional_slots": ["depth", "output_format", "filters", "source_constraints"],
+      "slot_definitions": {
+        "target": {
+          "question": "What is the URL, domain, or subject to investigate?",
+          "resolvers": ["context_inference", "last_mentioned_entity"],
+          "type": "string",
+          "nullable": false
+        },
+        "information_type": {
+          "question": "What type of information are you looking for?",
+          "resolvers": ["keyword_map", "context_inference"],
+          "keyword_map": {
+            "research": "general", "investigate": "deep_analysis",
+            "scrape": "structured_data", "crawl": "structured_data",
+            "monitor": "change_detection", "check": "status"
+          },
+          "type": "enum",
+          "enum_values": ["general", "deep_analysis", "structured_data", "change_detection", "status"],
+          "nullable": false
+        },
+        "depth": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "enum",
+          "enum_values": ["surface", "standard", "deep"],
+          "default": "standard"
+        }
+      },
+      "confidence_threshold": 0.65,
+      "preamble": "State the target and what is being sought before beginning. Use structured output. Cite sources."
+    },
+
+    "skill_building": {
+      "description": "Creating Agent-Zero skills, extensions, tools, or prompt patches",
+      "triggers": [
+        "build a skill", "create a skill", "write a skill", "make a skill",
+        "build an extension", "create extension", "write extension",
+        "new tool", "build tool", "agent zero skill", "hardening"
+      ],
+      "required_slots": ["skill_type", "purpose"],
+      "optional_slots": ["hook_point", "language", "integration_target"],
+      "slot_definitions": {
+        "skill_type": {
+          "question": "Is this a skill, extension, prompt patch, or framework replacement?",
+          "resolvers": ["keyword_map", "context_inference"],
+          "keyword_map": {
+            "skill": "skill", "extension": "extension",
+            "prompt patch": "prompt_patch", "fw replacement": "fw_replacement",
+            "framework replacement": "fw_replacement"
+          },
+          "type": "enum",
+          "enum_values": ["skill", "extension", "prompt_patch", "fw_replacement"],
+          "nullable": false
+        },
+        "purpose": {
+          "question": "What problem should this solve or what capability should it add?",
+          "resolvers": ["context_inference"],
+          "type": "string",
+          "nullable": false
+        },
+        "hook_point": {
+          "question": null,
+          "resolvers": ["context_inference"],
+          "type": "string",
+          "nullable": true,
+          "note": "e.g. hist_add_before, response_stream_after, tool_execute_before"
+        }
+      },
+      "confidence_threshold": 0.65,
+      "preamble": "State the hook point, input/output contract, and failure behavior before writing any code."
+    },
+
+    "conversational": {
+      "description": "General conversation, greetings, meta questions, no task implied",
+      "triggers": [],
+      "required_slots": [],
+      "optional_slots": [],
+      "slot_definitions": {},
+      "confidence_threshold": 0.0,
+      "preamble": null
+    }
+  },
+
+  "global": {
+    "ambiguous_pronouns": [
+      "it", "that", "this", "them", "those", "the thing",
+      "the file", "the code", "the script", "that thing"
+    ],
+    "underspec_phrases": [
+      "make it better", "fix it", "clean it up", "do that again",
+      "do it", "handle it", "take care of it", "just do it",
+      "you know what to do", "figure it out", "the usual way"
+    ],
+    "file_extensions": {
+      ".py": "python", ".js": "javascript", ".ts": "typescript",
+      ".sh": "bash", ".json": "json", ".yaml": "yaml", ".yml": "yaml",
+      ".md": "markdown", ".html": "html", ".css": "css",
+      ".rs": "rust", ".go": "go", ".cpp": "cpp", ".c": "c",
+      ".java": "java", ".rb": "ruby", ".php": "php"
+    },
+    "path_patterns": [
+      "\\/[a-zA-Z0-9_\\-\\.]+(?:\\/[a-zA-Z0-9_\\-\\.]+)*",
+      "[a-zA-Z0-9_\\-]+\\.[a-zA-Z]{1,5}",
+      "~\\/[a-zA-Z0-9_\\-\\.\\/ ]+"
+    ],
+    "max_clarification_questions": 2,
+    "belief_state_ttl_turns": 6,
+    "min_trigger_word_length": 3,
+    "multi_domain_strategy": "highest_confidence",
+    "fallback_domain": "conversational"
+  }
+}

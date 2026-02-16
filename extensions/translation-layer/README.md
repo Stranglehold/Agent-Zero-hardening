@@ -56,16 +56,13 @@ LLM call
 
 | File | Purpose |
 |------|---------|
-| `_10_belief_state_tracker.py` | Extension logic — target hook: `before_main_llm_call` (v2 corrected) |
-| `slot_taxonomy.json` | Intent domains (18 domains), slots, resolvers, thresholds — v1.1.0 |
-| `install_translation_layer.sh` | Installation script with backup |
-| `install_all_snippet.sh` | Code to add to your main `install_all.sh` |
+| `belief_state_tracker.py` | Extension logic — target hook: `before_main_llm_call` |
+| `slot_taxonomy.json` | Intent domains, slots, resolvers, thresholds — your config surface |
+| `install_translation_layer.sh` | Installs as `_10_belief_state_tracker.py` in correct hook directory |
 
 ---
 
 ## Installation
-
-### Quick install (standalone)
 
 ```bash
 cd /a0/usr/hardening/translation-layer
@@ -73,88 +70,14 @@ chmod +x install_translation_layer.sh
 ./install_translation_layer.sh
 ```
 
-### Integration with install_all.sh (recommended)
-
-Add this to `/a0/usr/hardening/install_all.sh` after your other layers:
-
-```bash
-echo ""
-echo "========================================"
-echo "Layer 5: Translation Layer (BST)"
-echo "========================================"
-if [[ -d "$HARDENING_DIR/translation-layer" ]]; then
-    bash "$HARDENING_DIR/translation-layer/install_translation_layer.sh"
-else
-    echo "⚠ translation-layer/ not found, skipping"
-fi
-```
-
-Then run:
-
-```bash
-cd /a0/usr/hardening
-bash install_all.sh
-```
-
-### Installed files
-
+Installs to:
 ```
 /a0/python/extensions/before_main_llm_call/_10_belief_state_tracker.py
 /a0/python/extensions/before_main_llm_call/slot_taxonomy.json
 ```
 
 The `_10_` prefix ensures BST runs before the existing `_20_context_watchdog.py`.
-
----
-
-## Verification
-
-Start a fresh agent chat and send: `refactor agent.py`
-
-Then check the logs:
-
-```bash
-newest=$(ls -t /a0/logs/*.html | head -1)
-python3 -c "
-import re
-with open('$newest') as f:
-    text = re.sub(r'<[^>]+>', '', f.read())
-for line in text.splitlines():
-    if 'BST' in line:
-        print(line.strip())
-"
-```
-
-**Expected output:**
-
-```
-[BST] Domain: refactor | Confidence: 0.72 | Slots: ['target_file', 'operation']
-```
-
-**If you see nothing:**
-
-1. Check files are installed:
-   ```bash
-   ls -lh /a0/python/extensions/before_main_llm_call/_10_belief_state_tracker.py
-   ls -lh /a0/python/extensions/before_main_llm_call/slot_taxonomy.json
-   ```
-
-2. Clear Python cache and retry:
-   ```bash
-   rm -rf /a0/python/extensions/before_main_llm_call/__pycache__
-   ```
-
-3. Check for import errors in the latest log (HTML-decoded):
-   ```bash
-   python3 -c "
-   import re
-   with open('$(ls -t /a0/logs/*.html | head -1)') as f:
-       text = re.sub(r'<[^>]+>', '', f.read())
-   for line in text.splitlines():
-       if any(k in line for k in ['Error', 'Traceback', 'belief', 'BST']):
-           print(line.strip())
-   " | tail -30
-   ```
+No renaming or other steps needed.
 
 ---
 

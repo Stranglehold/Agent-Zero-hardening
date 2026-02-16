@@ -1,83 +1,68 @@
 #!/usr/bin/env bash
-# ============================================================
-# install_translation_layer.sh
-# Installs the Belief State Tracker (BST) translation layer
-# into Agent-Zero as a hist_add_before extension.
-# ============================================================
-
-set -euo pipefail
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-A0_ROOT="${A0_ROOT:-/a0}"
-EXT_DIR="$A0_ROOT/python/extensions/before_main_llm_call"
-BACKUP_DIR="$SCRIPT_DIR/backups/$(date +%Y%m%d_%H%M%S)"
+LAYER_DIR="$SCRIPT_DIR"
+TARGET_DIR="/a0/python/extensions/before_main_llm_call"
 
-log()  { echo "[BST-INSTALL] $*"; }
-warn() { echo "[BST-INSTALL] WARN: $*"; }
-fail() { echo "[BST-INSTALL] ERROR: $*" >&2; exit 1; }
+echo "================================================================"
+echo "Installing Translation Layer (Belief State Tracker)"
+echo "================================================================"
 
-# ── Validate environment ────────────────────────────────────────────────────
-
-[ -d "$A0_ROOT" ]     || fail "Agent-Zero root not found at $A0_ROOT. Set A0_ROOT env var."
-[ -d "$EXT_DIR" ]     || mkdir -p "$EXT_DIR" && log "Created extension dir: $EXT_DIR"
-
-# Check source files exist
-[ -f "$SCRIPT_DIR/belief_state_tracker.py" ] || fail "belief_state_tracker.py not found in $SCRIPT_DIR"
-[ -f "$SCRIPT_DIR/slot_taxonomy.json" ]      || fail "slot_taxonomy.json not found in $SCRIPT_DIR"
-
-# ── Backup existing files if present ────────────────────────────────────────
-
-TARGET_PY="$EXT_DIR/_10_belief_state_tracker.py"
-TARGET_JSON="$EXT_DIR/slot_taxonomy.json"
-
-if [ -f "$TARGET_PY" ] || [ -f "$TARGET_JSON" ]; then
-    mkdir -p "$BACKUP_DIR"
-    [ -f "$TARGET_PY" ]   && cp "$TARGET_PY" "$BACKUP_DIR/"   && log "Backed up existing tracker"
-    [ -f "$TARGET_JSON" ] && cp "$TARGET_JSON" "$BACKUP_DIR/" && log "Backed up existing taxonomy"
+# Verify source files exist
+if [[ ! -f "$LAYER_DIR/_10_belief_state_tracker.py" ]]; then
+    echo "ERROR: _10_belief_state_tracker.py not found in $LAYER_DIR"
+    exit 1
 fi
 
-# ── Install ──────────────────────────────────────────────────────────────────
-
-cp "$SCRIPT_DIR/belief_state_tracker.py" "$TARGET_PY"
-log "Installed belief_state_tracker.py → $TARGET_PY"
-
-cp "$SCRIPT_DIR/slot_taxonomy.json" "$TARGET_JSON"
-log "Installed slot_taxonomy.json → $TARGET_JSON"
-
-# ── Verify Python syntax ─────────────────────────────────────────────────────
-
-if command -v python3 &>/dev/null; then
-    python3 -m py_compile "$TARGET_PY" && log "Python syntax OK" || warn "Syntax check failed — check the file"
-else
-    warn "python3 not found — skipping syntax check"
+if [[ ! -f "$LAYER_DIR/slot_taxonomy.json" ]]; then
+    echo "ERROR: slot_taxonomy.json not found in $LAYER_DIR"
+    exit 1
 fi
 
-# ── Verify JSON ───────────────────────────────────────────────────────────────
+# Ensure target directory exists
+mkdir -p "$TARGET_DIR"
 
-if command -v python3 &>/dev/null; then
-    python3 -c "import json; json.load(open('$TARGET_JSON'))" && log "JSON valid" || fail "slot_taxonomy.json is invalid JSON"
+# Backup existing files if present
+timestamp=$(date +%Y%m%d_%H%M%S)
+if [[ -f "$TARGET_DIR/_10_belief_state_tracker.py" ]]; then
+    backup="$TARGET_DIR/_10_belief_state_tracker.py.backup_$timestamp"
+    echo "→ Backing up existing BST to: $backup"
+    cp "$TARGET_DIR/_10_belief_state_tracker.py" "$backup"
 fi
 
-# ── Check for other hist_add_before extensions (ordering info) ───────────────
-
-OTHER_EXTS=$(find "$EXT_DIR" -name "*.py" ! -name "_10_belief_state_tracker.py" | sort)
-if [ -n "$OTHER_EXTS" ]; then
-    log "Other before_main_llm_call extensions detected:"
-    echo "$OTHER_EXTS" | while read -r ext; do
-        log "  $ext"
-    done
-    log "BST is prefixed _10_ so it runs before _20_context_watchdog.py — no rename needed."
+if [[ -f "$TARGET_DIR/slot_taxonomy.json" ]]; then
+    backup="$TARGET_DIR/slot_taxonomy.json.backup_$timestamp"
+    echo "→ Backing up existing taxonomy to: $backup"
+    cp "$TARGET_DIR/slot_taxonomy.json" "$backup"
 fi
 
-# ── Done ─────────────────────────────────────────────────────────────────────
+# Install files
+echo "→ Installing _10_belief_state_tracker.py"
+cp "$LAYER_DIR/_10_belief_state_tracker.py" "$TARGET_DIR/"
+
+echo "→ Installing slot_taxonomy.json"
+cp "$LAYER_DIR/slot_taxonomy.json" "$TARGET_DIR/"
+
+# Clear Python cache to force reload
+if [[ -d "$TARGET_DIR/__pycache__" ]]; then
+    echo "→ Clearing Python cache"
+    rm -rf "$TARGET_DIR/__pycache__"
+fi
+
+# Set permissions
+chmod 644 "$TARGET_DIR/_10_belief_state_tracker.py"
+chmod 644 "$TARGET_DIR/slot_taxonomy.json"
 
 echo ""
-log "Translation layer installed successfully."
-log ""
-log "Files:"
-log "  $TARGET_PY"
-log "  $TARGET_JSON"
-log ""
-log "Hook: before_main_llm_call (runs as _10_, before existing _20_context_watchdog.py)"
-log "To add new intent domains: edit slot_taxonomy.json only — no code changes required."
+echo "✓ Translation layer installed successfully"
 echo ""
+echo "Files installed to: $TARGET_DIR"
+echo "  - _10_belief_state_tracker.py"
+echo "  - slot_taxonomy.json"
+echo ""
+echo "Next: Start a fresh agent chat and send an ambiguous message like"
+echo "      'refactor agent.py' to verify BST is running."
+echo "      Check logs for [BST] lines."
+echo ""
+echo "================================================================"
