@@ -1,106 +1,152 @@
 #!/bin/bash
 # install_all.sh
-# Runs all hardening install scripts in correct order.
+# Runs all hardening install scripts in correct dependency order.
 # Safe to re-run at any time — all scripts are idempotent.
-# Usage: bash install_all.sh [--check-only]
+#
+# Usage:
+#   bash install_all.sh              Install all layers
+#   bash install_all.sh --check-only Check for upstream conflicts only
+#   bash install_all.sh --layer N    Install only layer N (1-5)
+#
 # Run from: /a0/usr/hardening/ (repo root)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECK_ONLY=false
+LAYER_ONLY=""
 
-if [ "$1" = "--check-only" ]; then
-  CHECK_ONLY=true
-fi
+for arg in "$@"; do
+  case "$arg" in
+    --check-only)  CHECK_ONLY=true ;;
+    --layer=*)     LAYER_ONLY="${arg#*=}" ;;
+  esac
+done
+
+# ── Color output ──────────────────────────────────────────────────────────────
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m'
 
-log_section() { echo -e "\n${YELLOW}=== $1 ===${NC}"; }
-log_ok()      { echo -e "${GREEN}  ✓ $1${NC}"; }
-log_warn()    { echo -e "${YELLOW}  ⚠ $1${NC}"; }
-log_err()     { echo -e "${RED}  ✗ $1${NC}"; }
+log_header()  { echo -e "\n${BOLD}${CYAN}━━━ $1 ━━━${NC}"; }
+log_section() { echo -e "\n${YELLOW}  → $1${NC}"; }
+log_ok()      { echo -e "${GREEN}    ✓ $1${NC}"; }
+log_warn()    { echo -e "${YELLOW}    ⚠ $1${NC}"; }
+log_err()     { echo -e "${RED}    ✗ $1${NC}"; }
+log_skip()    { echo -e "    ~ $1 (not found — skipped)"; }
 
-# Each entry is "subdirectory|script_name"
-# install_all.sh cds into the subdirectory before running so SCRIPT_DIR
-# inside each sub-script resolves to its own directory correctly.
-# Use ".|script_name" for scripts that live at repo root.
-SCRIPTS=(
-  "fw-replacements|install_fw_replacements.sh"
-  "extensions|install_extensions.sh"
-  "extensions|install_failure_tracker.sh"
-  "prompt-patches|install_prompt_patches.sh"
-  ".|install_skills.sh"
+# ── Layer registry ────────────────────────────────────────────────────────────
+# Each entry: "LAYER_NUM|LABEL|SCRIPT_PATH"
+# Multiple entries with same LAYER_NUM are sub-steps of that layer.
+
+LAYERS=(
+  "1|Framework message replacements      |fw-replacements/install_fw_replacements.sh"
+  "2|Extensions — retry + watchdog       |extensions/install_extensions.sh"
+  "2|Extensions — failure tracker        |extensions/install_failure_tracker.sh"
+  "3|Prompt patches                      |prompt-patches/install_prompt_patches.sh"
+  "4|Skills                              |install_skills.sh"
+  "5|Translation layer (belief state BST)|translation-layer/install_translation_layer.sh"
 )
 
 CHECK_SCRIPTS=(
-  "fw-replacements|check_fw_upstream.sh"
-  "extensions|check_extensions_upstream.sh"
-  "prompt-patches|check_prompt_patches_upstream.sh"
-  ".|check_skills_upstream.sh"
+  "fw-replacements/check_fw_upstream.sh"
+  "extensions/check_extensions_upstream.sh"
+  "prompt-patches/check_prompt_patches_upstream.sh"
+  "check_skills_upstream.sh"
 )
 
-run_script() {
-  local subdir="$1"
-  local script="$2"
-  local target_dir
-
-  if [ "$subdir" = "." ]; then
-    target_dir="$SCRIPT_DIR"
-  else
-    target_dir="$SCRIPT_DIR/$subdir"
-  fi
-
-  if [ ! -f "$target_dir/$script" ]; then
-    log_warn "Not found (skipping): $subdir/$script"
-    return 0
-  fi
-
-  (cd "$target_dir" && bash "$script")
-}
+# ── Check-only mode ───────────────────────────────────────────────────────────
 
 if [ "$CHECK_ONLY" = true ]; then
-  log_section "Checking for upstream changes"
+  log_header "Upstream Conflict Check"
+  echo "  Comparing installed files against agent-zero upstream..."
+  echo ""
+  any_changed=0
 
-  for entry in "${CHECK_SCRIPTS[@]}"; do
-    subdir="${entry%%|*}"
-    script="${entry##*|}"
-    log_section "$subdir/$script"
-    run_script "$subdir" "$script"
+  for script in "${CHECK_SCRIPTS[@]}"; do
+    if [ -f "$SCRIPT_DIR/$script" ]; then
+      log_section "$script"
+      bash "$SCRIPT_DIR/$script" || any_changed=1
+    else
+      log_skip "$script"
+    fi
   done
 
   echo ""
-  echo "Check complete. Run without --check-only to install."
+  if [ "$any_changed" -eq 0 ]; then
+    echo -e "${GREEN}No upstream conflicts. Safe to re-run install_all.sh.${NC}"
+  else
+    echo -e "${YELLOW}Conflicts detected above. Review diffs before reinstalling.${NC}"
+  fi
   exit 0
 fi
 
-log_section "Agent-Zero Hardening Layer — Full Install"
-echo "Source: $SCRIPT_DIR"
-echo "Target: /a0/"
+# ── Install mode ──────────────────────────────────────────────────────────────
+
+log_header "Agent-Zero Hardening Layer — Full Install"
+echo "  Source : $SCRIPT_DIR"
+echo "  Target : /a0/"
+[ -n "$LAYER_ONLY" ] && echo "  Mode   : Layer $LAYER_ONLY only"
 echo ""
 
 failed=0
+installed=0
+skipped=0
 
-for entry in "${SCRIPTS[@]}"; do
-  subdir="${entry%%|*}"
-  script="${entry##*|}"
-  log_section "$subdir/$script"
-  if run_script "$subdir" "$script"; then
-    log_ok "$script completed"
+for entry in "${LAYERS[@]}"; do
+  layer_num="${entry%%|*}"
+  rest="${entry#*|}"
+  label="${rest%%|*}"
+  label="$(echo "$label" | sed 's/[[:space:]]*$//')"   # trim trailing spaces
+  script="${rest#*|}"
+
+  # Filter if --layer=N was passed
+  if [ -n "$LAYER_ONLY" ] && [ "$layer_num" != "$LAYER_ONLY" ]; then
+    continue
+  fi
+
+  if [ ! -f "$SCRIPT_DIR/$script" ]; then
+    log_skip "Layer $layer_num — $label"
+    skipped=$((skipped + 1))
+    continue
+  fi
+
+  log_section "Layer $layer_num — $label"
+
+  if (cd "$SCRIPT_DIR/$(dirname "$script")" && bash "$(basename "$script")"); then
+    log_ok "Completed"
+    installed=$((installed + 1))
   else
-    log_err "$script failed"
+    log_err "FAILED"
     failed=$((failed + 1))
   fi
 done
 
+# ── Summary ───────────────────────────────────────────────────────────────────
+
 echo ""
+log_header "Summary"
+echo "  Completed : $installed"
+[ "$skipped" -gt 0 ] && echo "  Skipped   : $skipped (scripts not found)"
+[ "$failed"  -gt 0 ] && echo -e "  ${RED}Failed    : $failed${NC}"
+echo ""
+
 if [ "$failed" -eq 0 ]; then
-  echo -e "${GREEN}All hardening scripts completed successfully.${NC}"
-  echo "Start a fresh agent chat to load updated prompts and extensions."
+  echo -e "${GREEN}${BOLD}All layers installed successfully.${NC}"
+  echo ""
+  echo "  Deployment map:"
+  echo "    Layer 1  fw-replacements   → /a0/prompts/"
+  echo "    Layer 2  extensions        → /a0/python/extensions/"
+  echo "    Layer 3  prompt-patches    → /a0/prompts/"
+  echo "    Layer 4  skills            → /a0/skills/"
+  echo "    Layer 5  translation-layer → /a0/python/extensions/before_main_llm_call/"
+  echo ""
+  echo "  Restart agent-zero or start a fresh chat to load all changes."
 else
-  echo -e "${RED}$failed script(s) failed. Review output above.${NC}"
+  echo -e "${RED}${BOLD}$failed step(s) failed. Review output above before continuing.${NC}"
   exit 1
 fi
