@@ -1,0 +1,22 @@
+{
+  "host": "0.0.0.0",
+  "port": 8200,
+  "authentication": {
+    "scheme": "none",
+    "api_key": null
+  },
+  "agent_connection": {
+    "base_url": "http://localhost:5000",
+    "api_key": ""
+  },
+  "task_queue": {
+    "max_concurrent": 1,
+    "max_queued": 10,
+    "task_timeout_seconds": 600
+  },
+  "salute_poll_interval_seconds": 2,
+  "org_dir": "/a0/usr/organizations",
+  "reports_dir": "/a0/usr/organizations/reports",
+  "roles_dir": "/a0/usr/organizations/roles",
+  "plan_library_path": "/a0/python/extensions/before_main_llm_call/htn_plan_library.json"
+}
