@@ -57,6 +57,7 @@ LAYERS=(
   "5|Translation layer (belief state BST)|translation-layer/install_translation_layer.sh"
   "5|Graph workflow engine              |scripts/install_graph_engine.sh"
   "6|A2A compatibility server           |scripts/install_a2a_server.sh"
+  "7|Memory classification system       |scripts/install_memory_classification.sh"
 )
 
 CHECK_SCRIPTS=(
@@ -156,6 +157,7 @@ if [ "$failed" -eq 0 ]; then
   echo "    Layer 5  translation-layer → /a0/python/extensions/before_main_llm_call/"
   echo "    Layer 5  graph engine      → /a0/python/extensions/before_main_llm_call/"
   echo "    Layer 6  A2A server        → /a0/python/a2a_server/"
+  echo "    Layer 7  memory classify   → /a0/usr/extensions/ + /a0/usr/memory/"
   echo ""
   echo "  Restart agent-zero or start a fresh chat to load all changes."
   echo "  A2A server: python -m a2a_server.run (port 8200)"

@@ -1,0 +1,20 @@
+{
+  "load_bearing_keywords": [
+    "must",
+    "always",
+    "never",
+    "requirement",
+    "constraint",
+    "critical",
+    "essential",
+    "mandatory",
+    "do not",
+    "required"
+  ],
+  "archival_threshold_cycles": 50,
+  "deprecation_retention_cycles": 100,
+  "max_injected_memories": 8,
+  "maintenance_interval_loops": 25,
+  "conflict_top_k": 5,
+  "enable_purge": false
+}

@@ -458,6 +458,17 @@ def _emit_salute(agent, role: dict, org: dict, loop_data):
             },
         }
 
+        # Memory classification health (from Layer 7)
+        try:
+            mem_health = getattr(agent, "_memory_health", None)
+            if mem_health:
+                salute["environment"]["memory_health"] = mem_health
+                salute["environment"]["memory_fragments_stored"] = (
+                    mem_health.get("total_memories", 0)
+                )
+        except Exception:
+            pass
+
         # Try to get model name
         try:
             salute["environment"]["model"] = str(getattr(agent.config, "chat_model", ""))
