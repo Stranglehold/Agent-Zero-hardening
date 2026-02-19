@@ -1,0 +1,68 @@
+{
+  "_schema": "orgkernel:role_profile",
+  "_version": "1.0",
+  "role_id": "ops_xo",
+  "role_name": "Operations Executive Officer",
+  "role_type": "executive",
+  "chain_of_command": {
+    "reports_to": "co",
+    "authority_level": 2,
+    "can_delegate": true
+  },
+  "capabilities": {
+    "bst_domains": [
+      "codegen",
+      "docker_ops",
+      "config_edit"
+    ],
+    "htn_plans": [
+      "codegen_module",
+      "docker_build_deploy"
+    ],
+    "tools_primary": [
+      "code_execution_tool",
+      "response"
+    ],
+    "tools_secondary": [],
+    "skills": []
+  },
+  "requirements": {
+    "min_context_tokens": 4096,
+    "preferred_model": null,
+    "required_extensions": [
+      "belief_state_tracker",
+      "htn_plan_selector",
+      "working_memory"
+    ]
+  },
+  "pace_plan": {
+    "primary": {
+      "description": "Execute operations and deployment tasks normally",
+      "action": "normal_execution"
+    },
+    "alternate": {
+      "description": "Switch to fallback chain when repeated failures occur",
+      "action": "fallback_chain",
+      "trigger": "failures >= 4"
+    },
+    "contingent": {
+      "description": "Escalate to CO when failures exceed threshold",
+      "action": "escalate",
+      "trigger": "failures >= 6",
+      "escalate_to": "co"
+    },
+    "emergency": {
+      "description": "Abort all operations and report to CO immediately",
+      "action": "abort_and_report",
+      "trigger": "critical_failure OR context_overflow",
+      "escalate_to": "co"
+    }
+  },
+  "doctrine": {
+    "salute_interval_turns": 7,
+    "max_turns_without_progress": 15,
+    "report_on_completion": true,
+    "report_on_failure": true,
+    "autonomous_retry_limit": 2
+  }
+}

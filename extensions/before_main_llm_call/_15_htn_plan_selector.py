@@ -47,7 +47,7 @@ class HTNPlanSelector(Extension):
             if not message:
                 return
 
-            plan_id, plan = _match_plan(library, domain, message)
+            plan_id, plan = _match_plan(library, domain, message, self.agent)
             if plan_id and plan:
                 state = _create_state(self.agent, plan_id, plan)
                 _inject_plan_context(loop_data, state, library)
@@ -114,13 +114,25 @@ def _get_user_message(loop_data: LoopData) -> str:
 
 # ── Plan Matching ────────────────────────────────────────────────
 
-def _match_plan(library: dict, domain: str, message: str) -> tuple:
+def _match_plan(library: dict, domain: str, message: str, agent=None) -> tuple:
     """Match message against plan library. Returns (plan_id, plan) or (None, None)."""
     plans = library.get("plans", {})
     best_id = None
     best_score = 0
 
+    # Org kernel HTN filter: if set, only allow plans in the active role's capability set
+    allowed_plans = None
+    if agent:
+        try:
+            allowed_plans = agent.get_data("_org_htn_allowed_plans")
+        except Exception:
+            pass
+
     for plan_id, plan in plans.items():
+        # Org filter: skip plans not in the active role's allowed list
+        if allowed_plans is not None and plan_id not in allowed_plans:
+            continue
+
         # Domain filter: if plan specifies domains, message domain must match
         plan_domains = plan.get("domains", [])
         domain_match = not plan_domains or domain in plan_domains

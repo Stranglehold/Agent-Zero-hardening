@@ -1,0 +1,51 @@
+{
+  "_schema": "orgkernel:organization",
+  "_version": "1.0",
+  "org_id": "sigint_alpha",
+  "org_name": "SIGINT Alpha — Intelligence Collection Organization",
+  "description": "Intelligence-focused organization for signals intelligence, open source intelligence, human intelligence analysis, and electronic intelligence collection.",
+  "hierarchy": {
+    "co": {
+      "role_name": "Commander",
+      "subordinates": ["s2_xo"]
+    },
+    "s2_xo": {
+      "role_name": "S2 (Intelligence) Executive Officer",
+      "subordinates": ["sigint_specialist", "humint_specialist", "elint_specialist", "osint_specialist", "analysis_specialist"]
+    },
+    "sigint_specialist": {
+      "role_name": "SIGINT Specialist",
+      "subordinates": []
+    },
+    "humint_specialist": {
+      "role_name": "HUMINT Specialist",
+      "subordinates": []
+    },
+    "elint_specialist": {
+      "role_name": "ELINT Specialist",
+      "subordinates": []
+    },
+    "osint_specialist": {
+      "role_name": "OSINT Specialist",
+      "subordinates": []
+    },
+    "analysis_specialist": {
+      "role_name": "Analysis Specialist",
+      "subordinates": []
+    }
+  },
+  "domain_routing": {
+    "osint": ["osint_specialist", "s2_xo"],
+    "log_analysis": ["sigint_specialist", "s2_xo"],
+    "analysis": ["analysis_specialist", "s2_xo"],
+    "data_transform": ["analysis_specialist", "s2_xo"],
+    "api_integration": ["elint_specialist", "s2_xo"],
+    "codegen": ["s2_xo", "co"],
+    "bugfix": ["s2_xo", "co"]
+  },
+  "defaults": {
+    "salute_interval_turns": 5,
+    "max_turns_without_progress": 12,
+    "autonomous_retry_limit": 2
+  }
+}

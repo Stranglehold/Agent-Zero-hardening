@@ -1,0 +1,81 @@
+{
+  "_schema": "orgkernel:role_profile",
+  "_version": "1.0",
+  "role_id": "engineering_xo",
+  "role_name": "Executive Officer — Engineering",
+  "role_type": "executive",
+  "chain_of_command": {
+    "reports_to": "co",
+    "authority_level": 2,
+    "can_delegate": true
+  },
+  "capabilities": {
+    "bst_domains": [
+      "codegen",
+      "refactor",
+      "bugfix",
+      "log_analysis",
+      "docker_ops",
+      "git_ops",
+      "dependency_mgmt"
+    ],
+    "htn_plans": [
+      "git_feature_branch",
+      "git_merge_pr",
+      "docker_build_deploy",
+      "bugfix_workflow",
+      "refactor_safe",
+      "dependency_update",
+      "codegen_module",
+      "log_investigation"
+    ],
+    "tools_primary": [
+      "code_execution_tool",
+      "response"
+    ],
+    "tools_secondary": [
+      "memory_load",
+      "memory_save"
+    ],
+    "skills": []
+  },
+  "requirements": {
+    "min_context_tokens": 6000,
+    "preferred_model": null,
+    "required_extensions": [
+      "belief_state_tracker",
+      "htn_plan_selector",
+      "working_memory"
+    ]
+  },
+  "pace_plan": {
+    "primary": {
+      "description": "Delegate engineering tasks to specialists and coordinate execution",
+      "action": "normal_execution"
+    },
+    "alternate": {
+      "description": "Reassign task to a different specialist or attempt with alternate tooling",
+      "action": "fallback_chain",
+      "trigger": "failures>=4"
+    },
+    "contingent": {
+      "description": "Escalate to Commander with progress summary and blockers",
+      "action": "escalate",
+      "trigger": "failures>=6",
+      "escalate_to": "co"
+    },
+    "emergency": {
+      "description": "Abort current task tree and report full status to Commander",
+      "action": "abort_and_report",
+      "trigger": "critical_failure OR context_exhausted",
+      "escalate_to": "co"
+    }
+  },
+  "doctrine": {
+    "salute_interval_turns": 7,
+    "max_turns_without_progress": 15,
+    "report_on_completion": true,
+    "report_on_failure": true,
+    "autonomous_retry_limit": 2
+  }
+}

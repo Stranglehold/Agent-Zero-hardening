@@ -1,0 +1,88 @@
+{
+  "_schema": "orgkernel:role_profile",
+  "_version": "1.0",
+  "role_id": "co",
+  "role_name": "Commander",
+  "role_type": "commander",
+  "chain_of_command": {
+    "reports_to": "user",
+    "authority_level": 3,
+    "can_delegate": true
+  },
+  "capabilities": {
+    "bst_domains": [
+      "codegen",
+      "refactor",
+      "bugfix",
+      "log_analysis",
+      "docker_ops",
+      "git_ops",
+      "dependency_mgmt",
+      "osint",
+      "api_integration",
+      "analysis",
+      "data_transform"
+    ],
+    "htn_plans": [
+      "git_feature_branch",
+      "git_merge_pr",
+      "docker_build_deploy",
+      "bugfix_workflow",
+      "refactor_safe",
+      "dependency_update",
+      "codegen_module",
+      "log_investigation",
+      "api_integration",
+      "data_pipeline"
+    ],
+    "tools_primary": [
+      "code_execution_tool",
+      "response",
+      "search_engine",
+      "browser_agent",
+      "memory_load",
+      "memory_save"
+    ],
+    "tools_secondary": [],
+    "skills": []
+  },
+  "requirements": {
+    "min_context_tokens": 8000,
+    "preferred_model": null,
+    "required_extensions": [
+      "belief_state_tracker",
+      "htn_plan_selector",
+      "working_memory"
+    ]
+  },
+  "pace_plan": {
+    "primary": {
+      "description": "Execute mission directly or delegate to XOs based on domain",
+      "action": "normal_execution"
+    },
+    "alternate": {
+      "description": "Reassign task to alternate XO or attempt different approach",
+      "action": "fallback_chain",
+      "trigger": "failures>=5"
+    },
+    "contingent": {
+      "description": "Consolidate progress and escalate to user for guidance",
+      "action": "escalate",
+      "trigger": "failures>=8",
+      "escalate_to": "user"
+    },
+    "emergency": {
+      "description": "Abort all subordinate tasks and report full status to user",
+      "action": "abort_and_report",
+      "trigger": "critical_failure OR context_exhausted",
+      "escalate_to": "user"
+    }
+  },
+  "doctrine": {
+    "salute_interval_turns": 10,
+    "max_turns_without_progress": 20,
+    "report_on_completion": true,
+    "report_on_failure": true,
+    "autonomous_retry_limit": 3
+  }
+}

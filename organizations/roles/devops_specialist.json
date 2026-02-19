@@ -1,0 +1,73 @@
+{
+  "_schema": "orgkernel:role_profile",
+  "_version": "1.0",
+  "role_id": "devops_specialist",
+  "role_name": "DevOps Specialist",
+  "role_type": "specialist",
+  "chain_of_command": {
+    "reports_to": "engineering_xo",
+    "authority_level": 1,
+    "can_delegate": false
+  },
+  "capabilities": {
+    "bst_domains": [
+      "docker_ops",
+      "git_ops",
+      "dependency_mgmt"
+    ],
+    "htn_plans": [
+      "docker_build_deploy",
+      "git_feature_branch",
+      "git_merge_pr",
+      "dependency_update"
+    ],
+    "tools_primary": [
+      "code_execution_tool",
+      "response"
+    ],
+    "tools_secondary": [
+      "memory_load",
+      "memory_save"
+    ],
+    "skills": []
+  },
+  "requirements": {
+    "min_context_tokens": 4000,
+    "preferred_model": null,
+    "required_extensions": [
+      "belief_state_tracker",
+      "htn_plan_selector",
+      "working_memory"
+    ]
+  },
+  "pace_plan": {
+    "primary": {
+      "description": "Execute DevOps tasks including Docker builds, Git operations, and dependency management",
+      "action": "normal_execution"
+    },
+    "alternate": {
+      "description": "Retry with alternate build config or rollback strategy",
+      "action": "fallback_chain",
+      "trigger": "failures>=3"
+    },
+    "contingent": {
+      "description": "Escalate to Engineering XO with infrastructure state and error details",
+      "action": "escalate",
+      "trigger": "failures>=5 OR context_fill>0.85",
+      "escalate_to": "engineering_xo"
+    },
+    "emergency": {
+      "description": "Abort task, rollback if possible, and report full status to Engineering XO",
+      "action": "abort_and_report",
+      "trigger": "critical_failure OR context_exhausted",
+      "escalate_to": "engineering_xo"
+    }
+  },
+  "doctrine": {
+    "salute_interval_turns": 5,
+    "max_turns_without_progress": 12,
+    "report_on_completion": true,
+    "report_on_failure": true,
+    "autonomous_retry_limit": 2
+  }
+}

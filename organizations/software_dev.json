@@ -1,0 +1,60 @@
+{
+  "_schema": "orgkernel:organization",
+  "_version": "1.0",
+  "org_id": "software_dev",
+  "org_name": "Software Development Organization",
+  "description": "Full-stack software development organization with engineering, operations, and research divisions.",
+  "hierarchy": {
+    "co": {
+      "role_name": "Commander",
+      "subordinates": ["engineering_xo", "ops_xo", "research_xo"]
+    },
+    "engineering_xo": {
+      "role_name": "Executive Officer — Engineering",
+      "subordinates": ["codegen_specialist", "bugfix_specialist"]
+    },
+    "ops_xo": {
+      "role_name": "Operations Executive Officer",
+      "subordinates": ["infrastructure_specialist", "devops_specialist"]
+    },
+    "research_xo": {
+      "role_name": "Executive Officer — Research",
+      "subordinates": []
+    },
+    "codegen_specialist": {
+      "role_name": "Code Generation Specialist",
+      "subordinates": []
+    },
+    "bugfix_specialist": {
+      "role_name": "Bug Fix Specialist",
+      "subordinates": []
+    },
+    "infrastructure_specialist": {
+      "role_name": "Infrastructure Specialist",
+      "subordinates": []
+    },
+    "devops_specialist": {
+      "role_name": "DevOps Specialist",
+      "subordinates": []
+    }
+  },
+  "domain_routing": {
+    "codegen": ["codegen_specialist", "engineering_xo"],
+    "refactor": ["codegen_specialist", "engineering_xo"],
+    "bugfix": ["bugfix_specialist", "engineering_xo"],
+    "log_analysis": ["bugfix_specialist", "engineering_xo"],
+    "docker_ops": ["devops_specialist", "ops_xo"],
+    "git_ops": ["engineering_xo", "co"],
+    "dependency_mgmt": ["infrastructure_specialist", "engineering_xo"],
+    "osint": ["research_xo", "co"],
+    "api_integration": ["research_xo", "engineering_xo"],
+    "analysis": ["research_xo", "co"],
+    "data_transform": ["research_xo", "co"],
+    "config_edit": ["infrastructure_specialist", "ops_xo"]
+  },
+  "defaults": {
+    "salute_interval_turns": 5,
+    "max_turns_without_progress": 12,
+    "autonomous_retry_limit": 2
+  }
+}

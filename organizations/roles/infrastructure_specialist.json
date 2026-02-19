@@ -1,0 +1,66 @@
+{
+  "_schema": "orgkernel:role_profile",
+  "_version": "1.0",
+  "role_id": "infrastructure_specialist",
+  "role_name": "Infrastructure Specialist",
+  "role_type": "specialist",
+  "chain_of_command": {
+    "reports_to": "ops_xo",
+    "authority_level": 1,
+    "can_delegate": false
+  },
+  "capabilities": {
+    "bst_domains": [
+      "docker_ops",
+      "config_edit"
+    ],
+    "htn_plans": [
+      "docker_build_deploy"
+    ],
+    "tools_primary": [
+      "code_execution_tool",
+      "response"
+    ],
+    "tools_secondary": [],
+    "skills": []
+  },
+  "requirements": {
+    "min_context_tokens": 4096,
+    "preferred_model": null,
+    "required_extensions": [
+      "belief_state_tracker",
+      "htn_plan_selector",
+      "working_memory"
+    ]
+  },
+  "pace_plan": {
+    "primary": {
+      "description": "Execute infrastructure provisioning and container operations normally",
+      "action": "normal_execution"
+    },
+    "alternate": {
+      "description": "Switch to fallback chain when repeated failures occur",
+      "action": "fallback_chain",
+      "trigger": "failures >= 3"
+    },
+    "contingent": {
+      "description": "Escalate to Ops XO when failures exceed threshold or context nears capacity",
+      "action": "escalate",
+      "trigger": "failures >= 5 OR context_fill > 0.85",
+      "escalate_to": "ops_xo"
+    },
+    "emergency": {
+      "description": "Abort all operations and report to Ops XO immediately",
+      "action": "abort_and_report",
+      "trigger": "critical_failure OR context_overflow",
+      "escalate_to": "ops_xo"
+    }
+  },
+  "doctrine": {
+    "salute_interval_turns": 5,
+    "max_turns_without_progress": 12,
+    "report_on_completion": true,
+    "report_on_failure": true,
+    "autonomous_retry_limit": 2
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "_schema": "orgkernel:role_profile",
+  "_version": "1.0",
+  "role_id": "sigint_specialist",
+  "role_name": "SIGINT Specialist",
+  "role_type": "specialist",
+  "chain_of_command": {
+    "reports_to": "s2_xo",
+    "authority_level": 1,
+    "can_delegate": false
+  },
+  "capabilities": {
+    "bst_domains": [
+      "osint",
+      "log_analysis"
+    ],
+    "htn_plans": [
+      "log_investigation"
+    ],
+    "tools_primary": [
+      "search_engine",
+      "browser_agent",
+      "code_execution_tool"
+    ],
+    "tools_secondary": [
+      "memory_load",
+      "memory_save"
+    ],
+    "skills": []
+  },
+  "requirements": {
+    "min_context_tokens": 4096,
+    "preferred_model": null,
+    "required_extensions": [
+      "belief_state_tracker",
+      "htn_plan_selector",
+      "working_memory"
+    ]
+  },
+  "pace_plan": {
+    "primary": {
+      "description": "Execute signals intelligence collection and analysis normally",
+      "action": "normal_execution"
+    },
+    "alternate": {
+      "description": "Switch to fallback chain when repeated failures occur",
+      "action": "fallback_chain",
+      "trigger": "failures >= 3"
+    },
+    "contingent": {
+      "description": "Escalate to S2 XO when failures exceed threshold or context nears capacity",
+      "action": "escalate",
+      "trigger": "failures >= 5 OR context_fill > 0.85",
+      "escalate_to": "s2_xo"
+    },
+    "emergency": {
+      "description": "Abort all operations and report to S2 XO immediately",
+      "action": "abort_and_report",
+      "trigger": "critical_failure OR context_overflow",
+      "escalate_to": "s2_xo"
+    }
+  },
+  "doctrine": {
+    "salute_interval_turns": 5,
+    "max_turns_without_progress": 12,
+    "report_on_completion": true,
+    "report_on_failure": true,
+    "autonomous_retry_limit": 2
+  }
+}
