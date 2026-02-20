@@ -1,0 +1,124 @@
+{
+  "profile_version": "1.0",
+  "model_id": "qwen/qwen3-4b-2507",
+  "model_family": "qwen3",
+  "evaluated_at": "2026-02-20T05:26:39.046533+00:00",
+  "fixtures_version": "1.0.0",
+  "evaluation_summary": {
+    "overall_capability": "high",
+    "strongest_area": "graph_compliance",
+    "weakest_area": "context_sensitivity",
+    "recommended_prosthetic_level": "light"
+  },
+  "bst": {
+    "confidence_adjustment": -0.05,
+    "disabled_domains": [
+      "refactor"
+    ],
+    "enrichment_verbosity": "standard"
+  },
+  "meta_gate": {
+    "strictness": "permissive",
+    "json_repair_enabled": false,
+    "parameter_validation": false
+  },
+  "tool_fallback": {
+    "max_retries": 4,
+    "priority_patterns": [],
+    "escalation_after": 5
+  },
+  "graph_workflow": {
+    "max_retries_per_node": 3,
+    "stale_after_turns": 15,
+    "node_instruction_verbosity": "standard",
+    "inject_boundary_warnings": false
+  },
+  "pace": {
+    "primary_threshold": 3,
+    "alternate_threshold": 6,
+    "contingency_threshold": 10,
+    "emergency_threshold": 13
+  },
+  "context": {
+    "max_injection_tokens": 1200,
+    "layer_priority": [
+      "bst_enrichment",
+      "recalled_memories",
+      "graph_node",
+      "role_profile",
+      "personality",
+      "padding_noise"
+    ],
+    "instruction_compliance_warning_threshold": 0.5
+  },
+  "memory": {
+    "max_injected": 8,
+    "similarity_threshold": 0.7,
+    "noise_discrimination": "moderate"
+  },
+  "raw_metrics": {
+    "bst": {
+      "bst_enrichment_compliance_rate": 0.887,
+      "bst_enrichment_confusion_rate": 0.017,
+      "bst_improvement_over_baseline": 0.103,
+      "bst_optimal_confidence_threshold": 0.65,
+      "bst_domains_where_enrichment_hurts": [
+        "refactor"
+      ],
+      "bst_confidence_adjustment": -0.05
+    },
+    "tool_reliability": {
+      "tool_json_validity_rate": 1.0,
+      "tool_parameter_accuracy": 0.8,
+      "tool_selection_accuracy": 1.0,
+      "tool_failure_distribution": {},
+      "tool_recovery_rate": 1.0,
+      "meta_gate_strictness": "permissive",
+      "tool_fallback_priority_patterns": []
+    },
+    "graph_compliance": {
+      "graph_instruction_adherence": 1.0,
+      "graph_premature_completion_rate": 0.0,
+      "graph_retry_effectiveness": 1.0,
+      "graph_escalation_recognition": 1.0,
+      "graph_max_retries_per_node": 3,
+      "graph_stale_detection_turns": 15
+    },
+    "pace_calibration": {
+      "pace_self_recovery_rate": 1.0,
+      "pace_primary_recovery_rate": 0.875,
+      "pace_alternate_recovery_rate": 0.875,
+      "pace_contingency_recovery_rate": 0.875,
+      "pace_emergency_compliance": 0.875,
+      "pace_primary_threshold": 3,
+      "pace_alternate_threshold": 6,
+      "pace_contingency_threshold": 10,
+      "pace_emergency_threshold": 13
+    },
+    "context_sensitivity": {
+      "context_baseline_quality": 0.84,
+      "context_optimal_injection_tokens": 200,
+      "context_degradation_threshold_tokens": 4000,
+      "context_layer_priority": [
+        "bst_enrichment",
+        "recalled_memories",
+        "graph_node",
+        "role_profile",
+        "personality",
+        "padding_noise"
+      ],
+      "context_instruction_compliance_at_2k": 0.88,
+      "context_instruction_compliance_at_4k": 0.85,
+      "max_context_injection_tokens": 1200,
+      "memory_max_injected": 4
+    },
+    "memory_utilization": {
+      "memory_reference_rate": 0.983,
+      "memory_accuracy_rate": 0.95,
+      "memory_noise_discrimination": 0.5,
+      "memory_staleness_sensitivity": 0.85,
+      "memory_optimal_injection_count": 5,
+      "memory_max_injected": 8
+    }
+  }
+}
