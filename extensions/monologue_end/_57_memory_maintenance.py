@@ -181,6 +181,11 @@ class MemoryMaintenance(Extension):
                 except Exception:
                     pass
 
+            # ── Ontology maintenance hook ─────────────────────────────────
+            # Promote Layer 10b memory links to typed relationships when
+            # the ontology layer is enabled.
+            _run_ontology_hook(all_docs)
+
         except Exception as e:
             try:
                 self.agent.context.log.log(
@@ -578,6 +583,61 @@ def _check_dormancy(
             dormant_count += 1
 
     return dormant_count
+
+
+# ── Ontology Hook ────────────────────────────────────────────────────────────
+
+def _run_ontology_hook(all_docs: dict):
+    """Promote Layer 10b related_memory_ids to typed relationships in ontology.
+
+    Only runs if ontology layer is installed and enabled.
+    Silently skips if ontology_config.json is absent.
+    """
+    try:
+        ont_config_path = "/a0/usr/ontology/ontology_config.json"
+        if not os.path.isfile(ont_config_path):
+            return
+
+        with open(ont_config_path, "r", encoding="utf-8") as f:
+            ont_cfg = json.load(f)
+
+        if not ont_cfg.get("relationship_extraction", {}).get("promote_memory_links", True):
+            return
+
+        # Collect ontology entity docs
+        ontology_docs = [
+            doc for doc in all_docs.values()
+            if hasattr(doc, "metadata") and doc.metadata.get("area") == "ontology"
+        ]
+        if not ontology_docs:
+            return
+
+        import sys
+        ontology_dir = "/a0/usr/ontology"
+        if ontology_dir not in sys.path:
+            sys.path.insert(0, ontology_dir)
+
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "relationship_extractor",
+            os.path.join(ontology_dir, "relationship_extractor.py"),
+        )
+        if spec is None:
+            return
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        rels = module.promote_memory_links(ontology_docs)
+        if rels:
+            min_conf = ont_cfg.get("relationship_extraction", {}).get(
+                "min_confidence_to_surface", 0.3
+            )
+            stored = module.store_relationships(rels, min_confidence=min_conf)
+            if stored > 0:
+                print(f"[MEM-MAINT] Promoted {stored} memory links to typed relationships", flush=True)
+
+    except Exception as e:
+        print(f"[MEM-MAINT] Ontology hook error (passthrough): {e}", flush=True)
 
 
 # ── Config Loading ───────────────────────────────────────────────────────────

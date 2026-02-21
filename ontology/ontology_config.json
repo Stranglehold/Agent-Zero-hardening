@@ -1,0 +1,77 @@
+{
+  "ontology_schema": {
+    "schema_file": "ontology_schema.json",
+    "allow_custom_types": true,
+    "default_confidence": 0.5,
+    "require_source_provenance": true
+  },
+  "source_connectors": {
+    "enabled": true,
+    "connectors_dir": "/a0/usr/ontology/connectors/",
+    "ingestion_queue": "/a0/usr/ontology/ingestion_queue.jsonl",
+    "max_batch_size": 500,
+    "default_mappings": {
+      "csv": {
+        "name_columns": ["name", "full_name", "entity_name", "company_name", "org_name"],
+        "date_columns": ["date", "filing_date", "effective_date", "start_date"],
+        "amount_columns": ["amount", "value", "total", "contribution"],
+        "address_columns": ["address", "location", "city", "state"]
+      }
+    }
+  },
+  "entity_resolution": {
+    "enabled": true,
+    "merge_threshold": 0.85,
+    "review_threshold": 0.60,
+    "scoring_weights": {
+      "name": 0.35,
+      "identifier": 0.30,
+      "address": 0.15,
+      "date": 0.10,
+      "context": 0.10
+    },
+    "blocking_strategies": ["identifier", "name_prefix", "phonetic"],
+    "transitive_closure": true,
+    "audit_log": "/a0/usr/ontology/resolution_audit.jsonl",
+    "review_queue": "/a0/usr/ontology/review_queue.jsonl"
+  },
+  "relationship_extraction": {
+    "enabled": true,
+    "co_occurrence_min_sources": 1,
+    "temporal_window_days": 30,
+    "min_confidence_to_surface": 0.3,
+    "promote_memory_links": true,
+    "max_hops_for_path_analysis": 4
+  },
+  "ontology_store": {
+    "enabled": true,
+    "entities_area": "ontology",
+    "relationships_file": "/a0/usr/ontology/relationships.jsonl",
+    "entity_id_prefix": "ent_",
+    "summary_max_length": 500,
+    "rebuild_summary_on_merge": true
+  },
+  "ontology_query": {
+    "enabled": true,
+    "entity_detection_in_messages": true,
+    "auto_expand_relationships": true,
+    "relationship_hops": 1,
+    "max_connected_entities": 10,
+    "inject_format": "structured"
+  },
+  "investigation": {
+    "enabled": true,
+    "max_depth": 3,
+    "max_entities_per_investigation": 500,
+    "auto_resolve_on_ingest": true,
+    "findings_dir": "/a0/usr/ontology/investigations/",
+    "evidence_chain_min_confidence": 0.4
+  },
+  "maintenance": {
+    "enabled": true,
+    "interval_cycles": 25,
+    "relationship_confidence_update": true,
+    "compact_deprecated_relationships": true,
+    "rebuild_merged_summaries": true
+  }
+}

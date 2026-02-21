@@ -1,0 +1,88 @@
+{
+  "_schema": "orgkernel:role_profile",
+  "_version": "1.0",
+  "role_id": "intelligence_analyst",
+  "role_name": "Intelligence Analyst",
+  "role_type": "specialist",
+  "chain_of_command": {
+    "reports_to": "research_xo",
+    "authority_level": 1,
+    "can_delegate": false
+  },
+  "capabilities": {
+    "bst_domains": [
+      "investigation",
+      "analysis",
+      "research"
+    ],
+    "htn_plans": [
+      "investigation",
+      "entity_resolution",
+      "relationship_analysis"
+    ],
+    "tools_primary": [
+      "ontology_search",
+      "source_ingest",
+      "entity_resolve",
+      "relationship_query",
+      "investigation_report"
+    ],
+    "tools_secondary": [
+      "search_engine",
+      "browser_agent",
+      "code_execution_tool",
+      "memory_load",
+      "memory_save",
+      "response"
+    ],
+    "skills": []
+  },
+  "requirements": {
+    "min_context_tokens": 6000,
+    "preferred_model": null,
+    "required_extensions": [
+      "belief_state_tracker",
+      "working_memory",
+      "ontology_query",
+      "ontology_maintenance"
+    ]
+  },
+  "pace_plan": {
+    "primary": {
+      "description": "Search existing ontology for target entities and relationships, then traverse the relationship graph",
+      "action": "normal_execution"
+    },
+    "alternate": {
+      "description": "Ingest external data sources (CSV, JSON, HTML) and run entity resolution to expand the ontology",
+      "action": "fallback_chain",
+      "trigger": "failures>=2 OR ontology_empty"
+    },
+    "contingent": {
+      "description": "Broaden search scope to indirect connections; escalate to Research XO with partial findings",
+      "action": "escalate",
+      "trigger": "failures>=4 OR context_fill>0.80",
+      "escalate_to": "research_xo"
+    },
+    "emergency": {
+      "description": "Generate partial report with available findings and confidence flags; abort further search",
+      "action": "abort_and_report",
+      "trigger": "critical_failure OR context_exhausted",
+      "escalate_to": "research_xo"
+    }
+  },
+  "doctrine": {
+    "salute_interval_turns": 5,
+    "max_turns_without_progress": 15,
+    "report_on_completion": true,
+    "report_on_failure": true,
+    "autonomous_retry_limit": 3,
+    "investigation_decomposition": {
+      "step_1": "Search existing ontology for target entity",
+      "step_2": "Identify relevant data sources",
+      "step_3": "Ingest sources via appropriate connector",
+      "step_4": "Run entity resolution on ingested candidates",
+      "step_5": "Query relationship graph for 1-2 hops",
+      "step_6": "Generate investigation report with evidence chains"
+    }
+  }
+}

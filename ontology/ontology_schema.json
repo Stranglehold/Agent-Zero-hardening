@@ -1,0 +1,123 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Agent-Zero Exocortex — Ontology Layer entity and relationship type definitions",
+
+  "entity_types": {
+    "person": {
+      "description": "A natural or legal person",
+      "properties": ["name", "aliases", "date_of_birth", "identifiers", "description"],
+      "required": ["name"],
+      "identifier_fields": ["ssn_last4", "passport", "duns", "ein", "npi"]
+    },
+    "organization": {
+      "description": "A company, agency, NGO, or other organized group",
+      "properties": ["name", "aliases", "type", "jurisdiction", "identifiers", "description"],
+      "required": ["name"],
+      "identifier_fields": ["ein", "duns", "ticker", "lei", "registration_number"]
+    },
+    "location": {
+      "description": "A physical or geographic location",
+      "properties": ["name", "coordinates", "address", "type"],
+      "required": ["name"]
+    },
+    "event": {
+      "description": "A discrete occurrence in time",
+      "properties": ["name", "date", "location", "type", "description"],
+      "required": ["name"]
+    },
+    "document": {
+      "description": "A filing, report, article, or other recorded artifact",
+      "properties": ["title", "date", "source", "type", "content_hash"],
+      "required": ["title"]
+    },
+    "financial_instrument": {
+      "description": "A stock, bond, contract, or other financial product",
+      "properties": ["name", "type", "issuer", "identifiers"],
+      "required": ["name"],
+      "identifier_fields": ["isin", "cusip", "sedol", "ticker"]
+    },
+    "asset": {
+      "description": "A tangible or intangible asset with identifiable ownership",
+      "properties": ["name", "type", "owner", "value", "description"],
+      "required": ["name"]
+    }
+  },
+
+  "relationship_types": {
+    "employs": {
+      "description": "Organization employs a person in a role",
+      "from": ["organization"],
+      "to": ["person"],
+      "properties": ["role", "start_date", "end_date"],
+      "directional": true
+    },
+    "owns": {
+      "description": "Person or organization owns another entity or asset",
+      "from": ["person", "organization"],
+      "to": ["organization", "asset"],
+      "properties": ["share_pct", "since"],
+      "directional": true
+    },
+    "funded_by": {
+      "description": "Entity received funding from another entity",
+      "from": ["organization", "person", "event"],
+      "to": ["person", "organization"],
+      "properties": ["amount", "date", "type"],
+      "directional": true
+    },
+    "located_at": {
+      "description": "Entity is or was located at a location",
+      "from": ["person", "organization", "event"],
+      "to": ["location"],
+      "properties": ["since", "type"],
+      "directional": true
+    },
+    "related_to": {
+      "description": "Generic relationship with typed evidence",
+      "from": ["*"],
+      "to": ["*"],
+      "properties": ["type", "confidence", "evidence"],
+      "directional": false
+    },
+    "mentioned_in": {
+      "description": "Entity appears in a document",
+      "from": ["*"],
+      "to": ["document"],
+      "properties": ["context", "page", "confidence"],
+      "directional": true
+    },
+    "participated_in": {
+      "description": "Person or organization took part in an event",
+      "from": ["person", "organization"],
+      "to": ["event"],
+      "properties": ["role"],
+      "directional": true
+    },
+    "contracted_with": {
+      "description": "Organization has a contract with another organization",
+      "from": ["organization"],
+      "to": ["organization"],
+      "properties": ["value", "date", "type", "contract_id"],
+      "directional": true
+    },
+    "co_mentioned": {
+      "description": "Entities co-occurring in the same source record (auto-discovered)",
+      "from": ["*"],
+      "to": ["*"],
+      "properties": ["source_id", "co_occurrence_count", "confidence"],
+      "directional": false
+    },
+    "co_located": {
+      "description": "Entities sharing the same address (property-based inference)",
+      "from": ["*"],
+      "to": ["*"],
+      "properties": ["address", "confidence"],
+      "directional": false
+    }
+  },
+
+  "base_properties": {
+    "description": "Properties inherited by all entity types",
+    "fields": ["name", "aliases", "identifiers", "description", "tags"]
+  }
+}

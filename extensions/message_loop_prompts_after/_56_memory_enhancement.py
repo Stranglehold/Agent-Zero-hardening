@@ -175,12 +175,12 @@ class MemoryEnhancement(Extension):
 
             all_injected_ids = []
 
-            # ── Process memories (main + fragments) — always run ──────────
+            # ── Process memories (main + fragments + ontology entities) ───
             try:
                 result = await _run_pipeline(
                     db, all_docs, query, bst_domain, role_domains,
                     sim_threshold, max_injected,
-                    "area == 'main' or area == 'fragments'",
+                    "area == 'main' or area == 'fragments' or area == 'ontology'",
                     qe_config, decay_config, related_config,
                 )
 
