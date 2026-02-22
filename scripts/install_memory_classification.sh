@@ -66,3 +66,16 @@ echo "[MEM-CLASS] Done."
 echo "[MEM-CLASS] Classification runs automatically after memory storage (monologue_end)"
 echo "[MEM-CLASS] Relevance filter runs automatically after recall (message_loop_prompts_after)"
 echo "[MEM-CLASS] Config: $CONFIG_TARGET"
+
+# ── Disable stock memorizers ──────────────────────────────────────
+# Our _55_memory_classifier.py replaces the indiscriminate memorization
+# of _50_memorize_fragments.py and _51_memorize_solutions.py.
+# Disabling prevents double-writes and wasted utility model inference.
+
+STOCK_MEM_DIR="/a0/python/extensions/monologue_end"
+for stock_file in "$STOCK_MEM_DIR/_50_memorize_fragments.py" "$STOCK_MEM_DIR/_51_memorize_solutions.py"; do
+    if [ -f "$stock_file" ]; then
+        mv "$stock_file" "${stock_file}.stock_disabled"
+        echo "[MEM-CLASS] Disabled stock memorizer: $(basename $stock_file)"
+    fi
+done

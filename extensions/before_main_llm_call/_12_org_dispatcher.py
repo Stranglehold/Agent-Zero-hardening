@@ -37,7 +37,7 @@ PACE_LEVEL_KEY = "_org_pace_level"
 TURN_COUNTER_KEY = "_org_turn_counter"
 PREV_ROLE_KEY = "_org_prev_role_id"
 
-# BST integration (verified from _10_belief_state_tracker.py)
+# BST integration (verified from _11_belief_state_tracker.py)
 BST_STORE_KEY = "_bst_store"
 BST_BELIEF_KEY = "__bst_belief_state__"
 

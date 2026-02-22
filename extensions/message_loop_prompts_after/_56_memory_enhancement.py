@@ -86,7 +86,7 @@ DEFAULT_RELATED_CONFIG = {
 CLS_KEY = "classification"
 LIN_KEY = "lineage"
 
-# BST access keys (must match _10_belief_state_tracker.py)
+# BST access keys (must match _11_belief_state_tracker.py)
 BST_STORE_KEY = "_bst_store"
 BST_BELIEF_KEY = "__bst_belief_state__"
 

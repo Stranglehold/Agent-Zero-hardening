@@ -12,7 +12,7 @@ message is classified, structured, and enriched before the model ever sees it.
 User message enters agent history
     │
     ▼
-[before_main_llm_call hook — _10_belief_state_tracker.py]
+[before_main_llm_call hook — _11_belief_state_tracker.py]
     │
     ├─ [1] Underspecified check
     │       Is this "fix it" / "do that again" type input?
@@ -56,7 +56,7 @@ LLM call
 
 | File | Purpose |
 |------|---------|
-| `_10_belief_state_tracker.py` | Extension logic — target hook: `before_main_llm_call` (v2 corrected) |
+| `_11_belief_state_tracker.py` | Extension logic — target hook: `before_main_llm_call` (v2 corrected) |
 | `slot_taxonomy.json` | Intent domains (18 domains), slots, resolvers, thresholds — v1.1.0 |
 | `install_translation_layer.sh` | Installation script with backup |
 | `install_all_snippet.sh` | Code to add to your main `install_all.sh` |
@@ -99,7 +99,7 @@ bash install_all.sh
 ### Installed files
 
 ```
-/a0/python/extensions/before_main_llm_call/_10_belief_state_tracker.py
+/a0/python/extensions/before_main_llm_call/_11_belief_state_tracker.py
 /a0/python/extensions/before_main_llm_call/slot_taxonomy.json
 ```
 
@@ -135,7 +135,7 @@ for line in text.splitlines():
 
 1. Check files are installed:
    ```bash
-   ls -lh /a0/python/extensions/before_main_llm_call/_10_belief_state_tracker.py
+   ls -lh /a0/python/extensions/before_main_llm_call/_11_belief_state_tracker.py
    ls -lh /a0/python/extensions/before_main_llm_call/slot_taxonomy.json
    ```
 

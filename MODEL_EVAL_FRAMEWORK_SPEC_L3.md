@@ -502,7 +502,7 @@ def get_section(section_name: str, model_name: str = None) -> dict:
 
 Example for BST:
 ```python
-# In _10_belief_state_tracker.py, at the top of execute():
+# In _11_belief_state_tracker.py, at the top of execute():
 from model_profile_loader import get_section
 
 profile = get_section("bst")
@@ -589,8 +589,8 @@ eval_framework/
 
 ## Files to Read Before Implementation
 
-1. `/a0/python/extensions/before_main_llm_call/_10_belief_state_tracker.py` — Identify all configurable thresholds (domain confidence thresholds, enrichment format)
-2. `/a0/python/extensions/before_main_llm_call/_10_belief_state_tracker.py` adjacent `slot_taxonomy.json` — Domain definitions, trigger words, threshold values
+1. `/a0/python/extensions/before_main_llm_call/_11_belief_state_tracker.py` — Identify all configurable thresholds (domain confidence thresholds, enrichment format)
+2. `/a0/python/extensions/before_main_llm_call/_11_belief_state_tracker.py` adjacent `slot_taxonomy.json` — Domain definitions, trigger words, threshold values
 3. `/a0/python/extensions/before_main_llm_call/_11_meta_reasoning_gate.py` — Identify validation strictness levels, JSON repair patterns
 4. `/a0/python/extensions/before_main_llm_call/_13_tool_fallback_chain.py` — Error pattern definitions, retry logic, escalation triggers
 5. `/a0/python/extensions/before_main_llm_call/_15_htn_plan_selector.py` — Graph node types, retry configuration, stale detection parameters

@@ -39,7 +39,7 @@ Conflict Path:
 ## Component 1: Classification Engine
 
 ### Hook Point
-Extension in `monologue_end` pipeline, running AFTER the existing memorization extensions (`_50_memorize_fragments.py`, `_51_memorize_solutions.py`). These extensions write memories to FAISS. The classification engine reads what was just written and attaches metadata.
+Extension in `monologue_end` pipeline, the primary memory storage extension. Stock memorizers (`_50_memorize_fragments.py`, `_51_memorize_solutions.py`) are disabled during installation to prevent unfiltered double-writes.
 
 Suggested filename: `_55_memory_classifier.py`
 

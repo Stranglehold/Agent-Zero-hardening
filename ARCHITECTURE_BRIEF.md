@@ -58,7 +58,7 @@ Each message tells the model exactly one thing wrong and exactly one thing to do
 - `_20_reset_failure_counter.py` (tool_execute_after) — resets failure counter on success
 - `_20_context_watchdog.py` (before_main_llm_call) — token budget monitoring at 70%/85%
 - `_95_tiered_tool_injection.py` (message_loop_prompts_after) — dynamic tool spec loading
-- `_10_working_memory.py` (hist_add_before) — structured entity cache with decay and promotion
+- `_11_working_memory.py` (hist_add_before) — structured entity cache with decay and promotion
 
 **Layer 3 — prompt-patches:**
 - `agent.system.main.solving.md` — Step 0 classification gate (conversational vs task)
@@ -70,7 +70,7 @@ Each message tells the model exactly one thing wrong and exactly one thing to do
 - `create-skill/SKILL.md` — Meta-skill for building new skills correctly
 
 **Layer 5 — translation-layer (BST):**
-- `_10_belief_state_tracker.py` (v3) — Intent classification + slot filling + message enrichment + working memory integration
+- `_11_belief_state_tracker.py` (v3) — Intent classification + slot filling + message enrichment + working memory integration
 - `slot_taxonomy.json` (v1.2.0) — 18 intent domains, deterministic resolver chains, `working_memory_lookup` resolver
 
 ---
@@ -169,7 +169,7 @@ The v3 BST correctly uses dict access. **All new extensions must use dict format
 Prioritized build list. Each item is a standalone extension that composes with existing layers.
 
 ### ✅ Priority 1: Working Memory Buffer (DONE — Session 4)
-**File:** `extensions/hist_add_before/_10_working_memory.py` (~250 lines)
+**File:** `extensions/hist_add_before/_11_working_memory.py` (~250 lines)
 **BST integration:** `working_memory_lookup` resolver wired into 17 slot definitions across all domains.
 **Taxonomy:** `slot_taxonomy.json` updated to v1.2.0.
 
@@ -290,8 +290,8 @@ Before writing any new extension, read these files to understand the patterns:
 
 | File | Why |
 |------|-----|
-| `translation-layer/_10_belief_state_tracker.py` | Canonical BST v3 — dict message handling, slot resolution, enrichment, working memory integration |
-| `extensions/hist_add_before/_10_working_memory.py` | Working Memory Buffer — entity extraction, decay, promotion, BST integration |
+| `translation-layer/_11_belief_state_tracker.py` | Canonical BST v3 — dict message handling, slot resolution, enrichment, working memory integration |
+| `extensions/hist_add_before/_11_working_memory.py` | Working Memory Buffer — entity extraction, decay, promotion, BST integration |
 | `extensions/before_main_llm_call/_20_context_watchdog.py` | Clean minimal extension — how to read agent state, log properly |
 | `extensions/error_format/_30_failure_tracker.py` | How to track state across iterations using `agent.data` |
 | `extensions/message_loop_prompts_after/_95_tiered_tool_injection.py` | How to read/modify `loop_data.system` prompt segments |
@@ -324,7 +324,7 @@ This repo was built across multiple sessions:
 3. **Opus 4.6 session #2:** Wrote this architecture brief, prepared roadmap.
 
 4. **Opus 4.6 session #3 (current):** Resolved all three known repo issues (stale BST
-   copies, debug prints, duplicate taxonomy). Built Working Memory Buffer (`_10_working_memory.py`,
+   copies, debug prints, duplicate taxonomy). Built Working Memory Buffer (`_11_working_memory.py`,
    ~250 lines) at `hist_add_before` hook. Integrated with BST via `working_memory_lookup`
    resolver across 17 slot definitions. Updated taxonomy to v1.2.0. Next: Priority 2
    (Tool Fallback Chain).

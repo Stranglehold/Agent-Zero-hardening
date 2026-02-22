@@ -2,7 +2,7 @@
 Memory Classification Engine — Agent-Zero Hardening Layer
 ==========================================================
 Hook: monologue_end
-Priority: _55 (runs AFTER _50_memorize_fragments and _51_memorize_solutions)
+Priority: _55 (primary memory storage (stock _50/_51 memorizers disabled at install))
 
 Classifies every memory on four deterministic axes:
   - Validity:  confirmed | inferred | deprecated

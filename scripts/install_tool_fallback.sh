@@ -28,3 +28,16 @@ if [ -f "$SOURCE_EXT/tool_execute_before/_30_tool_fallback_advisor.py" ]; then
 fi
 
 echo "[ToolFallback] Done. Failure classification and fallback advisory active."
+
+# Clear pycache to force reload
+rm -rf "$AFTER_DIR/__pycache__/" 2>/dev/null
+rm -rf "$BEFORE_DIR/__pycache__/" 2>/dev/null
+echo "[ToolFallback] Cleared __pycache__"
+
+# Install updated dialog detection prompt
+PROMPT_SRC="$REPO_DIR/prompts"
+PROMPT_TARGET="/a0/prompts"
+if [ -f "$PROMPT_SRC/fw.code.pause_dialog.md" ]; then
+    cp "$PROMPT_SRC/fw.code.pause_dialog.md" "$PROMPT_TARGET/"
+    echo "[ToolFallback] Installed updated dialog detection prompt"
+fi

@@ -89,7 +89,7 @@ cp /a0/usr/organizations/software_dev.json /a0/usr/organizations/active.json
 
 Classifies every incoming message into one of 18 operational domains using fast regex pattern matching. Enriches the model's context with domain-specific slot values.
 
-**File:** `/a0/python/extensions/before_main_llm_call/_10_belief_state_tracker.py`
+**File:** `/a0/python/extensions/before_main_llm_call/_11_belief_state_tracker.py`
 
 **Domains:** codegen, refactor, bugfix, git_ops, docker_ops, dependency_mgmt, log_analysis, data_transform, api_integration, config_edit, file_ops, osint, conversational, meta_agent, skill_building, planning, analysis, unknown
 
@@ -168,7 +168,7 @@ Post-execution monitor that detects operational anomalies and injects corrective
 
 Entity extraction and short-term memory with decay. Tracks file paths, function names, error messages, and other entities across conversation turns.
 
-**File:** `/a0/python/extensions/hist_add_before/_10_working_memory.py`
+**File:** `/a0/python/extensions/hist_add_before/_11_working_memory.py`
 
 **Features:**
 - Automatic entity extraction from messages
