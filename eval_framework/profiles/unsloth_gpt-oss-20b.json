@@ -1,0 +1,76 @@
+{
+  "profile_version": "1.0",
+  "model_id": "unsloth\\gpt-oss-20b",
+  "model_family": "unknown",
+  "evaluated_at": "2026-02-24T01:47:22.642988+00:00",
+  "fixtures_version": "1.0.0",
+  "evaluation_summary": {
+    "overall_capability": "low",
+    "strongest_area": "tool_reliability",
+    "weakest_area": "tool_reliability",
+    "recommended_prosthetic_level": "full"
+  },
+  "bst": {
+    "confidence_adjustment": 0,
+    "disabled_domains": [],
+    "enrichment_verbosity": "verbose"
+  },
+  "meta_gate": {
+    "strictness": "moderate",
+    "json_repair_enabled": true,
+    "parameter_validation": true
+  },
+  "tool_fallback": {
+    "max_retries": 4,
+    "priority_patterns": [
+      "missing_param",
+      "syntax"
+    ],
+    "escalation_after": 5
+  },
+  "graph_workflow": {
+    "max_retries_per_node": 2,
+    "stale_after_turns": 12,
+    "node_instruction_verbosity": "standard",
+    "inject_boundary_warnings": false
+  },
+  "pace": {
+    "primary_threshold": 2,
+    "alternate_threshold": 4,
+    "contingency_threshold": 7,
+    "emergency_threshold": 10
+  },
+  "context": {
+    "max_injection_tokens": 2000,
+    "layer_priority": [
+      "bst_enrichment",
+      "graph_node",
+      "role_profile",
+      "recalled_memories",
+      "personality"
+    ],
+    "instruction_compliance_warning_threshold": 0.6
+  },
+  "memory": {
+    "max_injected": 6,
+    "similarity_threshold": 0.7,
+    "noise_discrimination": "moderate"
+  },
+  "raw_metrics": {
+    "tool_reliability": {
+      "tool_json_validity_rate": 0.933,
+      "tool_parameter_accuracy": 0.133,
+      "tool_selection_accuracy": 0.333,
+      "tool_failure_distribution": {
+        "syntax": 0.09,
+        "missing_param": 0.91
+      },
+      "tool_recovery_rate": 1.0,
+      "meta_gate_strictness": "moderate",
+      "tool_fallback_priority_patterns": [
+        "missing_param",
+        "syntax"
+      ]
+    }
+  }
+}

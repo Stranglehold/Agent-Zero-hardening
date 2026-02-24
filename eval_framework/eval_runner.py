@@ -1,13 +1,16 @@
 """
-Model Evaluation Framework — Agent-Zero Hardening Layer
+Model Evaluation Framework â€" Agent-Zero Hardening Layer
 ========================================================
 Standalone test harness that profiles any model loaded in LM Studio
 against the hardening layers and produces a configuration profile.
 
+v1.1 â€" Added chat_raw() to LMStudioClient for tool format compatibility.
+       Backward compatible: existing modules using chat() are unaffected.
+
 Usage:
     python eval_runner.py \
         --api-base http://localhost:1234/v1 \
-        --model-name "qwen3-14b-q4_k_m" \
+        --model-name "your-model-name" \
         --output-dir ./profiles \
         --verbose
 
@@ -31,7 +34,7 @@ MODULES_DIR = SCRIPT_DIR / "modules"
 DEFAULT_CONFIG = SCRIPT_DIR / "config.json"
 
 # ---------------------------------------------------------------------------
-# Module registry — maps config name → (module_file, class_name)
+# Module registry â€" maps config name â†' (module_file, class_name)
 # ---------------------------------------------------------------------------
 MODULE_REGISTRY = {
     "bst":                  ("bst_eval",     "BSTEval"),
@@ -55,7 +58,7 @@ class LMStudioClient:
         self._base = api_base.rstrip("/")
         self._timeout = timeout
 
-    # ── Core call ──────────────────────────────────────────────────────
+    # â€"â€" Core call (returns content string â€" backward compatible) â€"â€"â€"â€"â€"â€"â€"â€"â€"
     def chat(
         self,
         messages: list[dict],
@@ -64,6 +67,37 @@ class LMStudioClient:
         max_tokens: int = 2048,
     ) -> str:
         """Send a chat completion request and return the assistant text."""
+        data = self._send_request(messages, model, temperature, max_tokens)
+        return data["choices"][0]["message"]["content"]
+
+    # â€"â€" Raw call (returns full message dict â€" for format adapter) â€"â€"â€"â€"â€"â€"â€"â€"
+    def chat_raw(
+        self,
+        messages: list[dict],
+        model: str = "",
+        temperature: float = 0.1,
+        max_tokens: int = 2048,
+    ) -> dict:
+        """Send a chat completion request and return the full message dict.
+
+        Returns the complete message object from the API response, including:
+        - content: str (always present)
+        - tool_calls: list[dict] (if model returned tool calls)
+        - reasoning_content: str (if model returned reasoning/thinking)
+        - role: str
+        """
+        data = self._send_request(messages, model, temperature, max_tokens)
+        return data["choices"][0]["message"]
+
+    # â€"â€" Internal request method â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"
+    def _send_request(
+        self,
+        messages: list[dict],
+        model: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> dict:
+        """Send the HTTP request and return parsed response data."""
         import requests
 
         payload = {
@@ -87,8 +121,7 @@ class LMStudioClient:
                     "Ensure a model is fully loaded in LM Studio."
                 )
             resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"]
+            return resp.json()
         except requests.exceptions.ConnectionError:
             raise RuntimeError(
                 f"Cannot connect to LM Studio at {self._base}. "
@@ -103,7 +136,7 @@ class LMStudioClient:
         except (KeyError, IndexError) as exc:
             raise RuntimeError(f"Unexpected API response format: {exc}")
 
-    # ── Health check ───────────────────────────────────────────────────
+    # â€"â€" Health check â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"
     def check_connection(self) -> dict:
         """Hit /v1/models to verify connectivity and get model info."""
         import requests
