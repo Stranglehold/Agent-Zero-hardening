@@ -39,6 +39,59 @@ log_warn()    { echo -e "${YELLOW}    ⚠ $1${NC}"; }
 log_err()     { echo -e "${RED}    ✗ $1${NC}"; }
 log_skip()    { echo -e "    ~ $1 (not found — skipped)"; }
 
+# ── Container detection & docker shim ─────────────────────────────────────────
+# When running inside the Agent-Zero container, `docker` is not available.
+# We create a lightweight shim that converts docker cp / docker exec into
+# direct local operations. Child scripts are unchanged — they continue to
+# call `docker cp` / `docker exec` normally.
+
+_DOCKER_SHIM_DIR=""
+_cleanup_shim() { [ -n "$_DOCKER_SHIM_DIR" ] && rm -rf "$_DOCKER_SHIM_DIR"; }
+
+_in_container=false
+if [ -f "/.dockerenv" ]; then
+  _in_container=true
+elif grep -qE "docker|lxc|containerd" /proc/1/cgroup 2>/dev/null; then
+  _in_container=true
+fi
+
+if [ "$_in_container" = true ]; then
+  _DOCKER_SHIM_DIR="$(mktemp -d)"
+  trap _cleanup_shim EXIT
+
+  cat > "$_DOCKER_SHIM_DIR/docker" << 'SHIM_EOF'
+#!/bin/bash
+# docker shim — intercepts docker cp / docker exec for in-container installs.
+# Called by child install scripts that were written for host-side execution.
+case "$1" in
+  cp)
+    shift
+    src="$1"
+    dst="$2"
+    # Strip leading "container:" prefix (e.g. "agent-zero:/a0/..." → "/a0/...")
+    src="${src##*:}"
+    dst="${dst##*:}"
+    mkdir -p "$(dirname "$dst")"
+    cp -p "$src" "$dst"
+    ;;
+  exec)
+    # docker exec <container> <cmd...> → run <cmd...> directly
+    shift   # drop "exec"
+    shift   # drop container name
+    "$@"
+    ;;
+  *)
+    echo "docker-shim: unsupported command '$1'" >&2
+    exit 1
+    ;;
+esac
+SHIM_EOF
+
+  chmod +x "$_DOCKER_SHIM_DIR/docker"
+  export PATH="$_DOCKER_SHIM_DIR:$PATH"
+  log_warn "Running inside container — docker shim active (direct cp/exec mode)"
+fi
+
 # ── Layer registry ────────────────────────────────────────────────────────────
 # Each entry: "LAYER_NUM|LABEL|SCRIPT_PATH"
 # Multiple entries with same LAYER_NUM are sub-steps of that layer.
