@@ -3,19 +3,70 @@ Tool Reliability Evaluation Module
 ====================================
 Measures tool call correctness: JSON validity, parameter accuracy,
 tool selection, failure patterns, and recovery.
+
+v1.3 — Fixture selection gated behind --force-harmony flag.
+       Provider info embedded in metrics output.
+       Standard fixtures used by default for all models/providers.
 """
 
+import sys
+from pathlib import Path
+
 from base_eval import BaseEval
+
+# Add parent dir for adapter import
+_parent = str(Path(__file__).resolve().parent.parent)
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
+
+try:
+    from tool_format_adapter import ToolFormatAdapter, detect_model_family
+    HAS_ADAPTER = True
+except ImportError:
+    HAS_ADAPTER = False
+
+# Fixture files
+HARMONY_FIXTURE = "tool_tests_harmony.json"
+STANDARD_FIXTURE = "tool_tests.json"
 
 
 class ToolEval(BaseEval):
     FIXTURE_FILE = "tool_tests.json"
 
     def run(self) -> tuple[dict, int]:
+        # Initialize format adapter if available
+        adapter = None
+        fixture_source = "standard"
+
+        if HAS_ADAPTER:
+            family = detect_model_family(self.model_name)
+            adapter = ToolFormatAdapter(model_family=family)
+            self._log(f"[ADAPTER] Model family detected: {family}")
+
+            # Fixture selection: only use Harmony if explicitly forced
+            if self.force_harmony and family == "gpt-oss":
+                harmony_path = self.fixtures_dir / HARMONY_FIXTURE
+                if harmony_path.exists():
+                    self.FIXTURE_FILE = HARMONY_FIXTURE
+                    fixture_source = "harmony"
+                    self._log(f"[ADAPTER] Using Harmony-native fixtures (--force-harmony)")
+                else:
+                    self._log(f"[ADAPTER] Harmony fixtures not found at {harmony_path}")
+                    self._log(f"[ADAPTER] Falling back to standard fixtures")
+            elif self.force_harmony:
+                self._log(f"[ADAPTER] --force-harmony ignored: model family '{family}' is not gpt-oss")
+        else:
+            self._log("[ADAPTER] tool_format_adapter not found, using legacy parsing")
+
+        if self.provider:
+            self._log(f"[PROVIDER] Inference provider: {self.provider}")
+
         fixtures = self.load_fixtures()
         tests = fixtures["tests"]
         recovery_tests = fixtures.get("recovery_tests", [])
         system_prompt = fixtures["system_prompt"]
+
+        has_raw = hasattr(self.client, 'chat_raw')
 
         json_valid = 0
         param_accurate = 0
@@ -32,14 +83,20 @@ class ToolEval(BaseEval):
 
             run_results = []
             for _ in range(self.runs_per_test):
-                resp = self.call_model([
+                messages = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": test["user_message"]},
-                ])
-                result = self._score_tool_call(resp, test)
+                ]
+
+                if adapter and has_raw:
+                    raw_resp = self.call_model_raw(messages)
+                    result = self._score_tool_call_adapted(raw_resp, test, adapter)
+                else:
+                    resp = self.call_model(messages)
+                    result = self._score_tool_call(resp, test)
+
                 run_results.append(result)
 
-            # Majority vote on each dimension
             best = self.majority_vote(run_results)
             total += 1
 
@@ -59,7 +116,7 @@ class ToolEval(BaseEval):
             self._log(f"  json={best['json_valid']} tool={best['tool_correct']} "
                        f"params={best['params_correct']} fail={best['failure_type']}")
 
-        # ── Recovery tests ─────────────────────────────────────────────
+        # Recovery tests
         recovery_successes = 0
         recovery_total = 0
 
@@ -70,31 +127,35 @@ class ToolEval(BaseEval):
 
             run_recoveries = []
             for _ in range(self.runs_per_test):
-                # First: send the initial message
                 resp1 = self.call_model([
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": rtest["initial_message"]},
                 ])
-                # Then: send the error and check recovery
-                resp2 = self.call_model([
+                messages2 = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": rtest["initial_message"]},
                     {"role": "assistant", "content": resp1},
                     {"role": "user", "content": rtest["error_response"]},
-                ])
-                recovered = self._check_recovery(resp2, rtest)
+                ]
+
+                if adapter and has_raw:
+                    raw_resp2 = self.call_model_raw(messages2)
+                    recovered = self._check_recovery_adapted(raw_resp2, rtest, adapter)
+                else:
+                    resp2 = self.call_model(messages2)
+                    recovered = self._check_recovery(resp2, rtest)
+
                 run_recoveries.append(recovered)
 
             if self.majority_vote(run_recoveries):
                 recovery_successes += 1
 
-        # ── Aggregate ──────────────────────────────────────────────────
+        # Aggregate
         json_rate = json_valid / total if total else 0
         param_rate = param_accurate / total if total else 0
         tool_rate = tool_correct / total if total else 0
         recovery_rate = recovery_successes / recovery_total if recovery_total else 0
 
-        # Normalize failure distribution
         total_failures = sum(failure_types.values())
         failure_dist = {}
         if total_failures > 0:
@@ -102,10 +163,8 @@ class ToolEval(BaseEval):
                 if v > 0:
                     failure_dist[k] = round(v / total_failures, 2)
 
-        # Priority patterns — top failures
         priority = sorted(failure_dist, key=failure_dist.get, reverse=True)[:3]
 
-        # Meta-gate strictness
         if json_rate < 0.80:
             strictness = "aggressive"
         elif json_rate < 0.95:
@@ -123,12 +182,89 @@ class ToolEval(BaseEval):
             "tool_fallback_priority_patterns": priority,
         }
 
+        if adapter:
+            metrics["_adapter_model_family"] = adapter.model_family
+        metrics["_fixture_source"] = fixture_source
+        if self.provider:
+            metrics["_inference_provider"] = self.provider
+
         return metrics, self._api_calls
 
-    # ── Scoring ────────────────────────────────────────────────────────
+    # Adapted scoring
+    def _score_tool_call_adapted(self, raw_response: dict, test: dict,
+                                  adapter: 'ToolFormatAdapter') -> dict:
+        result = {
+            "json_valid": False,
+            "tool_correct": False,
+            "params_correct": False,
+            "failure_type": None,
+        }
 
+        canonical = adapter.extract_tool_call(raw_response)
+
+        if canonical is None:
+            content = raw_response.get("content", "") or ""
+            return self._score_tool_call(content, test)
+
+        result["json_valid"] = True
+
+        tool_name = canonical.get("tool_name", "")
+        expected_tool = test["expected_tool"]
+        if tool_name == expected_tool:
+            result["tool_correct"] = True
+        elif tool_name:
+            result["failure_type"] = "hallucinated_tool"
+        else:
+            result["failure_type"] = "missing_param"
+
+        args = canonical.get("tool_args", {})
+        if not isinstance(args, dict):
+            result["failure_type"] = "syntax"
+            return result
+
+        required = test.get("required_fields", [])
+        missing = [f for f in required if f not in args]
+        if missing:
+            result["failure_type"] = "missing_param"
+            return result
+
+        expected_args = test.get("expected_args", {})
+        params_ok = True
+        for key, expected_val in expected_args.items():
+            actual_val = args.get(key)
+            if actual_val is None:
+                continue
+            if isinstance(expected_val, str):
+                if actual_val != expected_val:
+                    params_ok = False
+                    if key == "runtime":
+                        result["failure_type"] = "wrong_runtime"
+
+        result["params_correct"] = params_ok and result["tool_correct"]
+        return result
+
+    def _check_recovery_adapted(self, raw_response: dict, rtest: dict,
+                                 adapter: 'ToolFormatAdapter') -> bool:
+        expected = rtest["expected_behavior"]
+        canonical = adapter.extract_tool_call(raw_response)
+
+        if expected == "corrects_json_format":
+            return canonical is not None
+        if expected == "adds_missing_parameter":
+            if canonical is None:
+                return False
+            args = canonical.get("tool_args", {})
+            return isinstance(args, dict) and len(args) >= 2
+        if expected == "uses_correct_tool_name":
+            if canonical is None:
+                return False
+            tool = canonical.get("tool_name", "")
+            return tool in ("code_execution_tool", "response", "call_subordinate",
+                            "memory_save", "memory_load", "search_engine")
+        return canonical is not None
+
+    # Legacy scoring
     def _score_tool_call(self, response: str, test: dict) -> dict:
-        """Score a single tool call response."""
         result = {
             "json_valid": False,
             "tool_correct": False,
@@ -143,7 +279,6 @@ class ToolEval(BaseEval):
 
         result["json_valid"] = True
 
-        # Check tool name
         tool_name = parsed.get("tool_name", parsed.get("name", ""))
         expected_tool = test["expected_tool"]
         if tool_name == expected_tool:
@@ -153,7 +288,6 @@ class ToolEval(BaseEval):
         else:
             result["failure_type"] = "missing_param"
 
-        # Check parameters
         args = parsed.get("tool_args", parsed.get("args", parsed.get("arguments", {})))
         if not isinstance(args, dict):
             result["failure_type"] = "syntax"
@@ -165,28 +299,23 @@ class ToolEval(BaseEval):
             result["failure_type"] = "missing_param"
             return result
 
-        # Check expected args if provided
         expected_args = test.get("expected_args", {})
         params_ok = True
         for key, expected_val in expected_args.items():
             actual_val = args.get(key)
             if actual_val is None:
-                continue  # Already checked required
+                continue
             if isinstance(expected_val, str):
                 if actual_val != expected_val:
                     params_ok = False
-                    # Check specific failure: wrong runtime
                     if key == "runtime":
                         result["failure_type"] = "wrong_runtime"
 
         result["params_correct"] = params_ok and result["tool_correct"]
-
         return result
 
     def _check_recovery(self, response: str, rtest: dict) -> bool:
-        """Check if the model recovered after an error."""
         expected = rtest["expected_behavior"]
-
         ok, parsed = self.try_parse_json(response)
 
         if expected == "corrects_json_format":
@@ -202,5 +331,4 @@ class ToolEval(BaseEval):
             tool = parsed.get("tool_name", parsed.get("name", ""))
             return tool in ("code_execution_tool", "response", "call_subordinate",
                             "memory_save", "memory_load", "search_engine")
-
-        return ok  # Default: JSON parseable = recovered
+        return ok

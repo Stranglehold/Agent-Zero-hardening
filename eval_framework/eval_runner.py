@@ -1,20 +1,18 @@
 """
-Model Evaluation Framework â€" Agent-Zero Hardening Layer
+Model Evaluation Framework — Agent-Zero Hardening Layer
 ========================================================
 Standalone test harness that profiles any model loaded in LM Studio
-against the hardening layers and produces a configuration profile.
+or Ollama against the hardening layers and produces a configuration profile.
 
-v1.1 â€" Added chat_raw() to LMStudioClient for tool format compatibility.
-       Backward compatible: existing modules using chat() are unaffected.
+v1.2 — Added --provider flag (lmstudio|ollama) for provider-aware eval.
+       Added --force-harmony flag for Harmony-native fixtures.
+       Provider info propagated to modules and embedded in profile.
 
 Usage:
-    python eval_runner.py \
-        --api-base http://localhost:1234/v1 \
-        --model-name "your-model-name" \
-        --output-dir ./profiles \
-        --verbose
-
-    python eval_runner.py --modules bst tool_reliability --verbose
+    python eval_runner.py                                    # interactive (use run_eval.ps1)
+    python eval_runner.py --provider ollama --verbose        # Ollama with auto-detect
+    python eval_runner.py --provider lmstudio --modules bst tool_reliability --verbose
+    python eval_runner.py --force-harmony --verbose          # experimental Harmony fixtures
 """
 
 import argparse
@@ -34,7 +32,21 @@ MODULES_DIR = SCRIPT_DIR / "modules"
 DEFAULT_CONFIG = SCRIPT_DIR / "config.json"
 
 # ---------------------------------------------------------------------------
-# Module registry â€" maps config name â†' (module_file, class_name)
+# Provider defaults
+# ---------------------------------------------------------------------------
+PROVIDER_DEFAULTS = {
+    "lmstudio": {
+        "api_base": "http://localhost:1234/v1",
+        "display_name": "LM Studio",
+    },
+    "ollama": {
+        "api_base": "http://localhost:11434/v1",
+        "display_name": "Ollama",
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Module registry — maps config name → (module_file, class_name)
 # ---------------------------------------------------------------------------
 MODULE_REGISTRY = {
     "bst":                  ("bst_eval",     "BSTEval"),
@@ -46,19 +58,18 @@ MODULE_REGISTRY = {
 }
 
 # ---------------------------------------------------------------------------
-# LM Studio API client
+# LM Studio / Ollama API client
 # ---------------------------------------------------------------------------
 
 class LMStudioClient:
-    """Minimal OpenAI-compatible chat completion client for LM Studio."""
+    """Minimal OpenAI-compatible chat completion client for LM Studio and Ollama."""
 
     def __init__(self, api_base: str, timeout: int = 120):
-        import requests  # local import to keep top-level import-free
+        import requests
         self._session = requests.Session()
         self._base = api_base.rstrip("/")
         self._timeout = timeout
 
-    # â€"â€" Core call (returns content string â€" backward compatible) â€"â€"â€"â€"â€"â€"â€"â€"â€"
     def chat(
         self,
         messages: list[dict],
@@ -68,9 +79,8 @@ class LMStudioClient:
     ) -> str:
         """Send a chat completion request and return the assistant text."""
         data = self._send_request(messages, model, temperature, max_tokens)
-        return data["choices"][0]["message"]["content"]
+        return data["choices"][0]["message"].get("content", "") or ""
 
-    # â€"â€" Raw call (returns full message dict â€" for format adapter) â€"â€"â€"â€"â€"â€"â€"â€"
     def chat_raw(
         self,
         messages: list[dict],
@@ -78,18 +88,10 @@ class LMStudioClient:
         temperature: float = 0.1,
         max_tokens: int = 2048,
     ) -> dict:
-        """Send a chat completion request and return the full message dict.
-
-        Returns the complete message object from the API response, including:
-        - content: str (always present)
-        - tool_calls: list[dict] (if model returned tool calls)
-        - reasoning_content: str (if model returned reasoning/thinking)
-        - role: str
-        """
+        """Send a chat completion request and return the full message dict."""
         data = self._send_request(messages, model, temperature, max_tokens)
         return data["choices"][0]["message"]
 
-    # â€"â€" Internal request method â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"
     def _send_request(
         self,
         messages: list[dict],
@@ -117,26 +119,25 @@ class LMStudioClient:
                 ).startswith("application/json") else {}
                 err_msg = body.get("error", resp.text[:200])
                 raise RuntimeError(
-                    f"LM Studio 400 error: {err_msg}. "
-                    "Ensure a model is fully loaded in LM Studio."
+                    f"API 400 error: {err_msg}. "
+                    "Ensure a model is fully loaded."
                 )
             resp.raise_for_status()
             return resp.json()
         except requests.exceptions.ConnectionError:
             raise RuntimeError(
-                f"Cannot connect to LM Studio at {self._base}. "
-                "Is LM Studio running with a model loaded?"
+                f"Cannot connect to API at {self._base}. "
+                "Is the inference server running with a model loaded?"
             )
         except requests.exceptions.Timeout:
             raise RuntimeError(
-                f"LM Studio request timed out after {self._timeout}s."
+                f"API request timed out after {self._timeout}s."
             )
         except RuntimeError:
             raise
         except (KeyError, IndexError) as exc:
             raise RuntimeError(f"Unexpected API response format: {exc}")
 
-    # â€"â€" Health check â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"â€"
     def check_connection(self) -> dict:
         """Hit /v1/models to verify connectivity and get model info."""
         import requests
@@ -165,7 +166,6 @@ def _load_module(module_key: str):
 
     mod_file, cls_name = MODULE_REGISTRY[module_key]
 
-    # Add modules/ to path temporarily
     mod_dir = str(MODULES_DIR)
     if mod_dir not in sys.path:
         sys.path.insert(0, mod_dir)
@@ -183,6 +183,8 @@ def run_evaluation(
     model_name: str,
     modules: list[str],
     output_dir: str,
+    provider: str = "",
+    force_harmony: bool = False,
     max_retries: int = 2,
     runs_per_test: int = 3,
     timeout: int = 120,
@@ -195,17 +197,28 @@ def run_evaluation(
     # Verify connectivity
     health = client.check_connection()
     if not health["ok"]:
-        print(f"[ERROR] Cannot connect to LM Studio: {health.get('error')}")
+        print(f"[ERROR] Cannot connect: {health.get('error')}")
         sys.exit(1)
 
     detected_model = health.get("model", "unknown")
     effective_model = model_name or detected_model
-    print(f"[EVAL] Connected to LM Studio")
+    provider_display = PROVIDER_DEFAULTS.get(provider, {}).get("display_name", provider or "unknown")
+
+    print(f"[EVAL] Connected to {provider_display}")
     print(f"[EVAL] Detected model: {detected_model}")
     print(f"[EVAL] Profile target: {effective_model}")
+    print(f"[EVAL] Provider: {provider_display}")
     print(f"[EVAL] Modules: {', '.join(modules)}")
     print(f"[EVAL] Runs per test: {runs_per_test}")
+    if force_harmony:
+        print(f"[EVAL] Fixture override: Harmony-native (--force-harmony)")
     print()
+
+    # Build eval context passed to modules
+    eval_context = {
+        "provider": provider,
+        "force_harmony": force_harmony,
+    }
 
     all_metrics = {}
     total_api_calls = 0
@@ -224,6 +237,7 @@ def run_evaluation(
                 max_retries=max_retries,
                 runs_per_test=runs_per_test,
                 verbose=verbose,
+                eval_context=eval_context,
             )
             metrics, api_calls = evaluator.run()
             all_metrics[mod_key] = metrics
@@ -237,6 +251,9 @@ def run_evaluation(
                 print()
         except Exception as exc:
             print(f"[EVAL]   FAILED: {exc}")
+            import traceback
+            if verbose:
+                traceback.print_exc()
             all_metrics[mod_key] = {"error": str(exc)}
 
     total_elapsed = time.time() - start_time
@@ -253,11 +270,15 @@ def run_evaluation(
         raw_metrics=all_metrics,
     )
 
+    # Embed provider info in profile
+    profile["inference_provider"] = provider
+    profile["inference_provider_display"] = provider_display
+
     # Write output
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    safe_name = effective_model.replace("/", "_").replace("\\", "_")
+    safe_name = effective_model.replace("/", "_").replace("\\", "_").replace(":", "_")
     profile_path = out_path / f"{safe_name}.json"
 
     with open(profile_path, "w", encoding="utf-8") as f:
@@ -279,12 +300,18 @@ def main():
     parser.add_argument(
         "--api-base",
         default=None,
-        help="LM Studio API base URL (default: from config.json)",
+        help="API base URL (auto-set from --provider if omitted)",
     )
     parser.add_argument(
         "--model-name",
         default=None,
         help="Model identifier for the profile (auto-detected if omitted)",
+    )
+    parser.add_argument(
+        "--provider",
+        choices=["lmstudio", "ollama"],
+        default=None,
+        help="Inference provider (sets default API base and provider-aware behavior)",
     )
     parser.add_argument(
         "--modules",
@@ -296,6 +323,11 @@ def main():
         "--output-dir",
         default=None,
         help="Directory for output profile (default: from config.json)",
+    )
+    parser.add_argument(
+        "--force-harmony",
+        action="store_true",
+        help="Use Harmony-native tool fixtures for GPT-OSS models (experimental)",
     )
     parser.add_argument(
         "--verbose", "-v",
@@ -316,8 +348,19 @@ def main():
         with open(args.config, "r", encoding="utf-8") as f:
             config = json.load(f)
 
-    # Merge CLI args over config
-    api_base = args.api_base or config.get("api_base", "http://localhost:1234/v1")
+    # Resolve provider
+    provider = args.provider or config.get("provider", "")
+
+    # Resolve API base: CLI > config > provider default > fallback
+    if args.api_base:
+        api_base = args.api_base
+    elif config.get("api_base"):
+        api_base = config["api_base"]
+    elif provider and provider in PROVIDER_DEFAULTS:
+        api_base = PROVIDER_DEFAULTS[provider]["api_base"]
+    else:
+        api_base = "http://localhost:1234/v1"
+
     model_name = args.model_name or config.get("model_name", "")
     output_dir = args.output_dir or config.get("output_dir", "./profiles")
     timeout = config.get("timeout_seconds", 120)
@@ -342,6 +385,8 @@ def main():
         model_name=model_name,
         modules=modules,
         output_dir=output_dir,
+        provider=provider or "",
+        force_harmony=args.force_harmony,
         max_retries=max_retries,
         runs_per_test=runs_per_test,
         timeout=timeout,
